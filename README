@@ -1,0 +1,19 @@
+# PaillacoDiff
+It is a Wolfram Mathematica package for differential geometry and exterior algebra.
+
+# Definitions
+- Wedge product
+- Exterior derivatives
+- Hodge star 
+- Christoffel symbols
+- Ricci tensor
+- Ricci Scalar
+- Square of differential forms
+- Square of differential forms with two symmetric indices
+- Contraction operator
+- Supports vielbein basis
+
+
+
+
+
