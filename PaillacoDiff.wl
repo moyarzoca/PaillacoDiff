@@ -684,5 +684,6 @@ Row[{PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}]," = ",PrintIndices["\[PartialD]
 PrintIndices["\[PartialD]",{dn},{"\[Mu]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Rho]","\[Nu]"}],"+",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Rho]","\[Lambda]"}],
 PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Mu]","\[Nu]"}],"-",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Mu]","\[Lambda]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Rho]","\[Nu]"}]}];
 
+
 $defRicciScalar=
 Row[{"R"," = ",PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}],PrintIndices["g",{up,up},{"\[Mu]","\[Nu]"}]}];
