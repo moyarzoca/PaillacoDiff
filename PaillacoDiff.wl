@@ -216,7 +216,7 @@ Module[{iterationsigma,pair,auxlastelement,beforegam,gu,readytoKronProd,sigmarul
 
 
 DNAofForm /: DNAofForm[X_,coordIN_:coord] := 
-Module[{listtermsX,listtermscoeffs,mapcoord,Dimint,coordint,mappiator},
+Module[{listtermsX,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,CollectedForm, track},
 	If[
 	coord===coordIN,
 		coordint=coord;
@@ -228,19 +228,29 @@ Module[{listtermsX,listtermscoeffs,mapcoord,Dimint,coordint,mappiator},
 	Length@coordint>0,
 		Do[mapcoord[coordint[[ii]]] = ii, {ii, Dimint}],
 			Return[Print[Style["Coordinates not defined. ",Red,14],"The code requiers a global variabled called ",
-						Style[coord,Bold]," which is an array of the coordiantes."]]
+			Style[coord,Bold]," which is an array of the coordiantes."]]
 		];
+	
+	If[
+	FormDegree[X]===1,
+		track = "p=1",
+			track = "p>1"
+	];
+	
+	CollectedForm["p=1"] = Collect[Expand@X, d[1forms_]];
+	CollectedForm["p>1"] = Collect[Expand@X, Wedge[listforms___]];
+	
 	listtermsX = 
 	If[
-	Head[Collect[Expand@X, Wedge[listforms___]]] === Plus,
-		List @@ Collect[Expand@X, Wedge[listforms__]],
-			{Collect[Expand@X, Wedge[listforms___]]}
+	Head[CollectedForm[track]] === Plus,
+		List @@ CollectedForm[track],
+			{CollectedForm[track]}
 		];
-	(*(*In case of emergensies*);Return[listtermsX];*);
+	
 	mappiator[element_] := 
 	If[
 	FreeQ[element,Wedge],
-		(element/.coeff_.*e[YY_]:>{coeff,{YY}})/.coeff_.*d[YY_]:>{coeff,{mapcoord[YY]}},
+		(element/. coeff_.*e[YY_] :> {coeff, {YY}})/.coeff_.*d[YY_]:>{coeff,{mapcoord[YY]}},
 			element/.coeff_.*Wedge[YY__]:>{coeff,{YY}/.{d[XX_]:>mapcoord[XX],e[nn_]:>nn}}
 		];
 	Return[mappiator/@listtermsX];
@@ -321,7 +331,7 @@ Module[{DNAofX,DNAofHStarX,coordint,Dimint,sqrtdetgint},
 	type==="DNA",
 		DNAofX=X,DNAofX=DNAofMatrix[X]];
 		DNAofHStarX = 
-		Table[{sqrtdetgint*DNAofX[[JJinx,1]]*Signature[{Sequence@@DNAofX[[JJ,2]],Sequence@@Complement[Range[Dimint],DNAofX[[JJinx,2]]]}]
+		Table[{sqrtdetgint*DNAofX[[JJinx,1]]*Signature[{Sequence@@DNAofX[[JJinx,2]],Sequence@@Complement[Range[Dimint],DNAofX[[JJinx,2]]]}]
 		,Complement[Range[Dimint],DNAofX[[JJinx,2]]]}
 		,{JJinx,Length@DNAofX}];
 	Return[DNAofHStarX];
