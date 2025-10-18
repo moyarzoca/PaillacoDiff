@@ -1,7 +1,12 @@
 (* ::Package:: *)
 
-"I took some the following definition of FormDegree, Wedge and d[], with sligth modifications,from the 
-RGTC source code. So I want to thank the author of RGTC package for keeping it open source :D"
+"
+Author : Marcelo Oyarzo
+Acknowledgement: I learned some of properties of FormDegree, Wedge and d[] from the RGTC source code.
+So I want to thank the author of RGTC package for keeping it open source. 
+Also I thank Ruggero Noris and Stefano Maurelli the code and 
+for poiting my out issues and helped me to improve the code.
+"
 
 ClearAll[FormDegree]
 FormDegree[d[x_]]:=1+FormDegree[x];
@@ -425,7 +430,7 @@ Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimi
 	Flatten[
 		Table[
 			Table[
-				{simp[First[DNA[[IIinx]]]*Product[gUUint[[Last[DNA[[IIinx]]][[llinx]],indexx[[llinx]]]],{llinx,formdegree}]],indexx}
+				{First[DNA[[IIinx]]]*Product[gUUint[[Last[DNA[[IIinx]]][[llinx]],indexx[[llinx]]]],{llinx,formdegree}],indexx}
 			,{indexx,thetuples[[IIinx]]}]
 		,{IIinx,Length@DNA}]
 	,1];
@@ -434,6 +439,8 @@ Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimi
 	DNAUp = DNAofForm[DNAtoForms[BADDNAUp,coordint],coordint];
 	Return[DNAtoForms[DNAofHStarU[DNAUp,"DNA",{sqrtdetgint,coordint}],coordint]];
 ];
+
+HStarT[X_]:=(-1)^(FormDegree[X]*(Dim-FormDegree[X]))*MyHStar[X];
 
 (*====== Squares of differential forms ======*)
 
@@ -463,11 +470,12 @@ Module[{degreeform,Xd,XdU,DNAofXd,gintUU,listindices},
 			gintUU=gintUUinput
 	];
 	DNAofXd=simp[DNAofForm[Xform]];
-	Xd=DNAtoMatrix[DNAofXd];
+	Xd=SparseArray[DNAtoMatrix[DNAofXd]];
 	degreeform=FormDegree[Xform];
 	listindices = Join[Table[{iiinx+1,2*degreeform+2*iiinx-1},{iiinx,degreeform-1}], Table[{iiinx+1+degreeform,2*degreeform+2*iiinx},{iiinx,degreeform-1}]];
-	Return[Activate@TensorContract[Inactive[TensorProduct][Xd, Xd, Sequence@@Table[gintUU,{IIinx,degreeform-1}]], listindices
-	]]
+	Return[
+		Activate[Simplify[TensorContract[Inactive[TensorProduct][Xd, Xd, Sequence@@Table[gintUU,{IIinx,degreeform-1}]], listindices]]]
+	]
 ];
 
 
@@ -546,18 +554,33 @@ Module[{dgdd,dGamdd,dChrisdd,initialTime,valuesimp,gddint,coordint,gUUint,Dim},
 ];
 
 
+Clear[ComputeRdd];
+ComputeRdd["conf"] = <|"ComputeChris"->True|>;
 ComputeRdd[simp_:Identity,gddcoord_:{gdd,coord}] :=
-Module[{TrChrisd,term1,term2,term3,term4,auxterm1f,auxterm2f,initialTime,valuesimp,gddint,coordint,Dim},
+Module[{useglobalgdd,TrChrisd,term1,term2,term3,term4,auxterm1f,auxterm2f,initialTime,valuesimp,gddint,coordint,Dim},
 	initialTime=SessionTime[];
+	Clear[Rdd];
+	useglobalgdd = True;
+	
 	If[
 	gddcoord=!={gdd,coord},
+		Print["** Computing Rdd with metric in arguments"];
+		useglobalgdd = False;
 		gddint=gddcoord[[1]];
-		coordint=gddcoord[[2]],
-			gddint=gdd;coordint=coord
+		coordint=gddcoord[[2]];
+		Clear[ChrisUdd];
+		ComputeChrisUdd[simp,gddcoord];
+		,
+			gddint=gdd;
+			coordint=coord
 	];
 	
-	Clear[ChrisUdd,Rdd];
-	ComputeChrisUdd[simp,gddcoord];
+	If[
+	(ComputeRdd["conf"]["ComputeChris"])&&useglobalgdd,
+		Clear[ChrisUdd,Rdd];
+		ComputeChrisUdd[simp,gddcoord];
+	];
+	
 	Dim=Length@coordint;
 	
 	TrChrisd=simp[TensorContract[ChrisUdd,{{1,2}}]];
