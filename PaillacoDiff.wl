@@ -318,6 +318,46 @@ DNAofForm /: DNAofForm[X_,coordIN_:Automatic] :=
 		
 		Return[Map[coeffBaseElement[#, coordint]&,TermsXArray]];
 	];
+	
+(*
+   ---- Tools DNA and Sparse Array ----
+*)
+
+Clear[SparseFromDNA];
+SparseFromDNA[DNA_List, Dim_Integer, formdeg_Integer]:=
+ Module[{rules = <||>, perms, sign, base, comp},
+	Do[
+		comp = CompBase[[1]];
+		base = CompBase[[2]];
+		perms = Permutations[base];
+		Do[
+			sign = Signature[perm];
+			rules[perm] = sign * comp
+		,
+		{perm, perms}]
+		,
+	{CompBase, DNA}];
+	SparseArray[Normal[rules], ConstantArray[Dim, formdeg]]
+ ];
+
+Clear[DNAFromSparse];
+DNAFromSparse[tensor_SparseArray] := 
+Module[{tensorRules,indepComps,getDNAcomp},
+	tensorRules = ArrayRules[tensor];
+	indepComps = 
+		Select[
+			DeleteDuplicates[
+				Map[Sort,Keys[tensorRules]]
+			]
+		,VectorQ[#,IntegerQ]&];
+		
+	getDNAcomp[tRules_, comp_] := Apply[List,Reverse[Select[tRules, First[#]===comp&][[1]]]];
+	
+	Table[
+		getDNAcomp[tensorRules, comp]
+	,
+	{comp, indepComps}]
+];
 
 
 Errorcoord[] := Print[Style["Coordinates not defined. ",Red,14], "The code requiers a global variabled called ",
@@ -496,38 +536,91 @@ HStarT[X_]:=(-1)^(FormDegree[X]*(Dim-FormDegree[X]))*MyHStar[X];
 
 (*====== Squares of differential forms ======*)
 
+(* ---- Tools ---- *)
+nonzeroCompsFirst[Tensorsparse_SparseArray, mu_Integer] :=
+	Module[{tensorList,keysWithDuplicates},
+		tensorList = ArrayRules[Tensorsparse];
+		keysWithDuplicates = 
+			Map[
+			Delete[#,1]&, 
+				Select[Keys[tensorList],(#[[1]]===mu)&]
+			];
+
+		DeleteDuplicates[Map[Sort,Select[keysWithDuplicates, Signature[#]=!=0&]]]
+	];
+(*---*)
+
+
 Clear[FormSquare];
-FormSquare[Xform_,gintUUinput_:gUU,simp_:Identity] :=
-Module[{degreeform,Xd,XU,gintUU,listindices},
+FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity] :=
+Module[{deg,Xd,XU,gintUU,listindices},
 	If[
-	gintUUinput===gUU,
+	gUUIN===Automatic,
 		gintUU=gUU,
-			gintUU=gintUUinput
+			gintUU=gUUIN
 	];
 	
-	degreeform = FormDegree[Xform];
+	deg = FormDegree[Xform];
 	Xd = simp[FormsToMatrix[Xform]];
-	listindices = Join[Table[{iiinx,2*degreeform+2*iiinx-1},{iiinx,degreeform}], Table[{iiinx+degreeform,2*degreeform+2*iiinx},{iiinx,degreeform}]];
-	Return[Activate@TensorContract[Inactive[TensorProduct][Xd,Xd,Sequence@@Table[gintUU,{IIinx,degreeform}]], listindices]]
+	listindices = Join[Table[{iiinx,2*deg+2*iiinx-1},{iiinx,deg}], Table[{iiinx+deg,2*deg+2*iiinx},{iiinx,deg}]];
+	Return[Activate@TensorContract[Inactive[TensorProduct][Xd,Xd,Sequence@@Table[gintUU,{IIinx,deg}]], listindices]]
 ];
 
 Clear[FormSquaredd];
-FormSquaredd[0,simp_:Identity]:=0
+FormSquaredd[0,__]:=0
 
-FormSquaredd[Xform_,gintUUinput_:gUU,simp_:Identity] :=
-Module[{degreeform,Xd,XdU,DNAofXd,gintUU,listindices},
+FormSquaredd[Xform_, gintUUinput_:Automatic, simp_:Identity, coordIN_:Automatic] :=
+Module[{deg,FformDNA,FformSparse,gintUU,
+	coordint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
+	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,getCompRule,nonzeroXd,nonzeroXdU,Xsqdd,
+	Xdmunu, XdUmunu, FtensorSparse},
+	
 	If[
-	gintUUinput===gUU,
-		gintUU=gUU,
-			gintUU=gintUUinput
+	gintUUinput===Automatic,
+		gintUU = SparseArray[gUU],
+			gintUU = SparseArray[gintUUinput]
 	];
-	DNAofXd=simp[DNAofForm[Xform]];
-	Xd=SparseArray[DNAtoMatrix[DNAofXd]];
-	degreeform=FormDegree[Xform];
-	listindices = Join[Table[{iiinx+1,2*degreeform+2*iiinx-1},{iiinx,degreeform-1}], Table[{iiinx+1+degreeform,2*degreeform+2*iiinx},{iiinx,degreeform-1}]];
-	Return[
-		Activate[Simplify[TensorContract[Inactive[TensorProduct][Xd, Xd, Sequence@@Table[gintUU,{IIinx,degreeform-1}]], listindices]]]
-	]
+	
+	If[
+	coordIN===Automatic,
+		coordint = coord,
+			coordint = coordIN
+	];
+	
+	Dim = Length[coordint];
+	deg = FormDegree[Xform];
+	FformDNA = simp[DNAofForm[Xform, coordint]];
+	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
+	
+	seqgUU = Sequence@@Table[gintUU,{IIinx,deg-1}];
+	
+	indexcontr = Table[{iiinx+1,deg+2*iiinx-1},{iiinx,deg-1}];
+	FtensorSparse = Activate[TensorContract[Inactive[TensorProduct][FformSparse,seqgUU],indexcontr]];
+	
+	nonzeroDn[mu_] := nonzeroCompsFirst[FformSparse, mu];
+	nonzeroUp[nu_] := nonzeroCompsFirst[FtensorSparse, nu];
+	nonzeroInter[mu_, nu_] := Intersection[nonzeroDn[mu],nonzeroUp[nu]];
+	
+	nonzeroInterDn[mu_,nu_] := Map[Prepend[#,mu]&,nonzeroInter[mu,nu]];
+	nonzeroInterUp[mu_,nu_] := Map[Prepend[#,nu]&,nonzeroInter[mu,nu]];
+	
+	FformRule = ArrayRules[FformSparse];
+	FtensorRule = ArrayRules[FtensorSparse];
+	
+	getCompRule[tensor_List, comp_List] := First[Values[Select[tensor, #[[1]]===comp&]]];
+		
+	Table[nonzeroXd[mu,nu]  = Map[getCompRule[FformRule,  #]&, nonzeroInterDn[mu,nu]],{mu,Dim},{nu,mu,Dim}];
+	Table[nonzeroXdU[mu,nu] = Map[getCompRule[FtensorRule, #]&, nonzeroInterUp[mu,nu]],{mu,Dim},{nu,mu,Dim}];
+	Xsqdd = ConstantArray[0,{Dim,Dim}];
+	Do[
+		Xdmunu = simp[nonzeroXd[mu,nu]];
+		XdUmunu = simp[nonzeroXdU[mu,nu]];
+		Xsqdd[[mu,nu]] = Xdmunu . XdUmunu;
+		Xsqdd[[nu,mu]] = Xsqdd[[mu,nu]];
+	,{mu, Dim}, {nu, mu, Dim}];
+	
+	Return[((deg-1)!)*Xsqdd];
+
 ];
 (*====== Hodge star in the vielbein basis ======*)
 
