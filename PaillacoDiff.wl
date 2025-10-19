@@ -217,46 +217,107 @@ Module[{iterationsigma,pair,auxlastelement,beforegam,gu,readytoKronProd,sigmarul
 	GU=Table[If[i===1,I,1]KroneckerProduct[Sequence@@(readytoKronProd[[i]])],{i,Dim}];
 ];
 
-DNAofForm /: DNAofForm[X_,coordIN_:coord] := 
-Module[{listtermsX,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,CollectedForm, track},
-	If[
-	coord===coordIN,
-		coordint=coord;
-		Dimint=Length@coord,
-			coordint=coordIN; 
-			Dimint=Length@coordint
+(*
+			---- DNAofForm ----
+*)
+
+PolyFormQ[expr_] := Module[{terms, degs,exprExpand,degsDiff},
+	exprExpand = Expand[expr];
+	terms = 
+		If[
+		Head[exprExpand] === Plus,
+			Apply[List,exprExpand],
+				{exprExpand}
 		];
+	degs = Map[FormDegree, terms];
+	degsDiff = DeleteDuplicates[degs];
 	If[
-	Length@coordint>0,
-		Do[mapcoord[coordint[[ii]]] = ii, {ii, Dimint}],
-			Return[Print[Style["Coordinates not defined. ",Red,14],"The code requiers a global variabled called ",
-			Style[coord,Bold]," which is an array of the coordiantes."]]
-		];
-	
-	If[
-	FormDegree[X]===1,
-		track = "p=1",
-			track = "p>1"
+	Length[degsDiff]>1,
+		Return[True],
+			Return[False]
 	];
-	
-	CollectedForm["p=1"] = Collect[Expand@X, d[1forms_]];
-	CollectedForm["p>1"] = Collect[Expand@X, Wedge[listforms___]];
-	
-	listtermsX = 
-	If[
-	Head[CollectedForm[track]] === Plus,
-		List @@ CollectedForm[track],
-			{CollectedForm[track]}
-		];
-	
-	mappiator[element_] := 
-	If[
-	FreeQ[element,Wedge],
-		(element/. coeff_.*e[YY_] :> {coeff, {YY}})/.coeff_.*d[YY_]:>{coeff,{mapcoord[YY]}},
-			element/.coeff_.*Wedge[YY__]:>{coeff,{YY}/.{d[XX_]:>mapcoord[XX],e[nn_]:>nn}}
-		];
-	Return[mappiator/@listtermsX];
 ];
+
+Clear[coeffBaseElement];
+
+coeffBaseElement[pform_, coord_]:=
+	Module[{baseElement, coordBasisQ,deg, coeff, 
+		baseAlong, Dim, mapcoord,baseNumb, sign},
+		
+		deg = FormDegree[pform];
+		Dim = Length[coord];
+		mapcoord = AssociationThread[coord -> Range[Dim]];
+		
+		coordBasisQ = FreeQ[pform, e[_]];
+		
+		Which[
+		(deg===1)&&coordBasisQ,
+			baseElement = Cases[pform, _d, {0, Infinity}];
+			baseNumb = baseElement/.d[y_]:>{mapcoord[y]}
+			,
+		(deg===1)&&Not[coordBasisQ],
+			baseElement = Cases[pform, _e, {0, Infinity}];
+			baseNumb = baseElement/.e[y_]:>{y}
+			,
+		(deg > 1)&&coordBasisQ,
+			baseElement = Cases[pform, _Wedge, {0, Infinity}];
+			baseNumb = baseElement/.Wedge[YY__]:>{YY}/.d[y_]:>{mapcoord[y]};
+			,
+		(deg > 1)&&Not[coordBasisQ],
+			baseElement = Cases[pform, _Wedge, {0, Infinity}];
+			baseNumb = baseElement/.Wedge[YY__]:>{YY}/.e[y_]:>{y};
+		];
+		
+		baseNumb = Flatten[baseNumb];
+		sign = Signature[baseNumb];
+		baseNumb = Sort[baseNumb];
+		
+		If[
+		Length[baseElement]===1,
+			baseAlong = baseElement[[1]];
+			coeff = Coefficient[pform, baseAlong],
+				Message[DNAofForm::noBaseFound, baseElement];
+				Return[$Failed]
+		];
+	Return[{sign*coeff, baseNumb}];
+	];
+
+DNAofForm::nocord = 
+	"No coordinates provided to computed DNAofForm";
+DNAofForm::noBaseFound = 
+	"No base element found";
+	
+DNAofForm /: DNAofForm[X_,coordIN_:Automatic] := 
+	Module[{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track},
+		coordint = 
+			Which[
+				coordIN =!= Automatic,
+					coordIN,
+				ValueQ[coord], 
+					coord,
+				True,
+					Message[DNAofForm::nocord];
+					Return[$Failed]
+			];
+		Dimint = Length[coordint];
+		
+		Collected = 
+			Which[
+			FormDegree[X]===1,
+				Collect[Expand@X, {d[1forms_], e[num_]}],
+			(FormDegree[X]>1)||PolyFormQ[X],
+				Collect[Expand@X, Wedge[listforms___]]
+			];
+		
+		TermsXArray = 
+			If[
+			Head[Collected] === Plus,
+				Apply[List,Collected],
+					{Collected}
+				];
+		
+		Return[Map[coeffBaseElement[#, coordint]&,TermsXArray]];
+	];
 
 
 Errorcoord[] := Print[Style["Coordinates not defined. ",Red,14], "The code requiers a global variabled called ",
