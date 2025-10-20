@@ -548,22 +548,56 @@ nonzeroCompsFirst[Tensorsparse_SparseArray, mu_Integer] :=
 
 		DeleteDuplicates[Map[Sort,Select[keysWithDuplicates, Signature[#]=!=0&]]]
 	];
+	
+Clear[nonzeroComps];
+
+nonzeroComps[Tensorsparse_SparseArray] :=
+	Module[{tensorList,keysWithDuplicates},
+		tensorList = ArrayRules[Tensorsparse];
+		DeleteDuplicates[Map[Sort,Select[Keys[tensorList],(Signature[#]=!=0)&]]]
+	];
+
+Clear[getCompRule];
+getCompRule[tensor_List, comp_List] := First[Values[Select[tensor, #[[1]]===comp&]]];
 (*---*)
 
 
 Clear[FormSquare];
-FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity] :=
-Module[{deg,Xd,XU,gintUU,listindices},
+FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity, coordIN_:Automatic] :=
+Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
+	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
+	FformValues, FtensorValues, coordint,Dim},
 	If[
 	gUUIN===Automatic,
-		gintUU=gUU,
-			gintUU=gUUIN
+		gintUU=SparseArray[gUU],
+			gintUU = SparseArray[gUUIN]
+	];
+	
+	If[
+	coordIN===Automatic,
+		coordint = coord,
+			coordint = coordIN
 	];
 	
 	deg = FormDegree[Xform];
-	Xd = simp[FormsToMatrix[Xform]];
-	listindices = Join[Table[{iiinx,2*deg+2*iiinx-1},{iiinx,deg}], Table[{iiinx+deg,2*deg+2*iiinx},{iiinx,deg}]];
-	Return[Activate@TensorContract[Inactive[TensorProduct][Xd,Xd,Sequence@@Table[gintUU,{IIinx,deg}]], listindices]]
+	Dim = Length[coordint];
+	FformDNA = simp[DNAofForm[Xform, coordint]];
+	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
+	seqgUU = Sequence@@Table[gintUU,{IIinx,deg}];
+	indicesContract = Table[{inx, deg + 2*inx-1}, {inx, deg}];
+	FtensorSparse = Activate[TensorContract[Inactive[TensorProduct][FformSparse,seqgUU], indicesContract]];
+	
+	FormComps = nonzeroComps[FformSparse];
+	TensorComps = nonzeroComps[FtensorSparse];
+	InterComps = Intersection[FormComps , TensorComps];
+	
+	FformRule = ArrayRules[FformSparse];
+	FtensorRule = ArrayRules[FtensorSparse];
+	
+	FformValues   = simp[Map[getCompRule[FformRule,  #]&, InterComps]];
+	FtensorValues = simp[Map[getCompRule[FtensorRule, #]&, InterComps]];
+	
+	Return[FformValues . FtensorValues]
 ];
 
 Clear[FormSquaredd];
@@ -572,7 +606,7 @@ FormSquaredd[0,__]:=0
 FormSquaredd[Xform_, gintUUinput_:Automatic, simp_:Identity, coordIN_:Automatic] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
 	coordint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
-	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,getCompRule,nonzeroXd,nonzeroXdU,Xsqdd,
+	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
 	Xdmunu, XdUmunu, FtensorSparse},
 	
 	If[
@@ -606,8 +640,6 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 	
 	FformRule = ArrayRules[FformSparse];
 	FtensorRule = ArrayRules[FtensorSparse];
-	
-	getCompRule[tensor_List, comp_List] := First[Values[Select[tensor, #[[1]]===comp&]]];
 		
 	Table[nonzeroXd[mu,nu]  = Map[getCompRule[FformRule,  #]&, nonzeroInterDn[mu,nu]],{mu,Dim},{nu,mu,Dim}];
 	Table[nonzeroXdU[mu,nu] = Map[getCompRule[FtensorRule, #]&, nonzeroInterUp[mu,nu]],{mu,Dim},{nu,mu,Dim}];
