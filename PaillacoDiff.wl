@@ -95,6 +95,7 @@ CenterDot[X_TensorProduct,Y__TensorProduct] := Fold[auxCenterDot,X,{Y}];
 auxproduct[X_,Y_] := If[GamWeight[X]===1,CenterDot[X,Y],Dot[X,Y]];
 auxCenterDot[X_TensorProduct,Y_TensorProduct] := TensorProduct[Sequence@@Table[auxproduct[(List@@X)[[i]] ,(List@@Y)[[i]]],{i,Length@X}]];
 
+CliffordMap[X_] := X/.dxToe/.Wedge->Inactive[CenterDot]/.e[i_]:>Gam[i]//Activate;
 (*============ Abstract tensor product between Gamma and Pauli Matrices ============*)
 
 Unprotect[TensorProduct]
@@ -157,6 +158,90 @@ d[\[Sigma][i_?IntegerQ]]:=0;d[id2]=0;
 	\[Sigma][i_?IntegerQ].\[Sigma][j_?IntegerQ]:>\[Sigma][j].\[Sigma][i]/;i>j *),\[Sigma][1] . \[Sigma][2]:>I \[Sigma][3],\[Sigma][2] . \[Sigma][3]:>I \[Sigma][1],\[Sigma][1] . \[Sigma][3]:>-I \[Sigma][2],
 	\[Sigma][2] . \[Sigma][1]:>-I \[Sigma][3],\[Sigma][3] . \[Sigma][2]:>-I \[Sigma][1],\[Sigma][3] . \[Sigma][1]:>I \[Sigma][2]}
 	
+(*   ----- simpGam2 ----*)
+Clear[simpGam2];
+Clear[simpGamList];
+
+simpGam2::trapped = "There is a problem with center dot. Somebody got trapped...";
+
+simpGam2[X_] := X/.CenterDot[Gams__]:>simpGamList[Gams]
+simpGamList[Gams__]:=
+	Module[{numbs,Sortnumbs,sign,partition,\[Eta]int,simpPartitionElement,signPerm},
+				
+		numbs = DeleteCases[List[Gams],idGam]/.Gam->Identity;
+		Print[numbs];
+		If[Not[ValueQ[\[Eta]dd]],
+			Print["!!!! There is a problem. Define your flat metric \[Eta]dd"];
+			Return[Gams],
+				\[Eta]int = \[Eta]dd
+		];
+		If[
+		Signature[numbs]=!=0,
+			Return[CenterDot[Gams]]
+		];
+		Sortnumbs = Sort[numbs];
+		signPerm = Signature[PermutationList[FindPermutation[numbs, Sortnumbs]]];
+
+		partition = Split[Sortnumbs];
+		
+		simpPartitionElement[partElem_List] := 
+			Module[{outlist,comp,signElem},
+			comp = partElem[[1]];
+			If[
+			EvenQ[Length[partElem]],
+				outlist = {};
+				signElem = (\[Eta]int[[comp,comp]])^(Length[partElem]/2),
+					outlist = {comp};
+					signElem = (\[Eta]int[[comp,comp]])^((Length[partElem]-1)/2)
+			];
+			Return[<|"outlist"->outlist, "sign"->signElem|>]
+			];
+		
+		outFromsimp = Map[simpPartitionElement, partition];
+		signpowers =  
+		sign = signPerm* Apply[Times,Map[#["sign"]&,outFromsimp]];
+		Return[sign*Apply[CenterDot,Map[Gam,Flatten[Map[#["outlist"]&,outFromsimp]]]]];
+		];
+(*=== Safe Production between Gam Sigma matrices ===*)
+
+RuleFromTensorProd[X_] := 
+Module[{collected,listTerms},
+	collected = Collect[X,_TensorProduct];
+	listTerms = 
+		If[
+		Head[collected]===Plus,
+			Apply[List,collected],
+				{collected}
+		];
+	Map[getCoefTensorProd,listTerms]
+];
+
+Clear[getCoefTensorProd]
+getCoefTensorProd[X_] := 
+	Module[{basis,coef},
+		basis = Cases[X, _TensorProduct,{0,\[Infinity]}];
+		If[Length[basis]===1,
+			basis = basis[[1]];
+			coef  = Coefficient[X,basis]
+		];
+		Return[basis->coef]
+	];
+	
+
+prodGamSig[X1_,X2_]:=
+	Module[{rules1, rules2,alltuples,thesum},
+		rules1 = Association[RuleFromTensorProd[X1]];
+		rules2 = Association[RuleFromTensorProd[X2]];
+		alltuples = Tuples[{Keys[rules1],Keys[rules2]}];
+			
+		thesum = Sum[
+			rules1[tup[[1]]]*rules2[tup[[2]]]*(simpGamma[CenterDot[tup[[1]],tup[[2]]]]//.\[Sigma]rules)
+		,
+		{tup,alltuples}];
+		
+		Return[thesum];
+	];
+
 
 (*====== Towards contraction operator =====*)
 
@@ -402,6 +487,11 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
 	FformValues, FtensorValues, coordint,Dim},
 	If[
+	Xform ===0,
+		Return[0]
+	];
+		
+	If[
 	gUUIN===Automatic,
 		gintUU=SparseArray[gUU],
 			gintUU = SparseArray[gUUIN]
@@ -429,7 +519,7 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	FformValues   = simp[Map[getCompRule[FformRule,  #]&, InterComps]];
 	FtensorValues = simp[Map[getCompRule[FtensorRule, #]&, InterComps]];
 	
-	Return[FformValues . FtensorValues]
+	Return[(FformValues . FtensorValues)*(deg)!]
 ];
 
 (*   FormSquaredd  *)
@@ -493,6 +583,10 @@ Clear[Hstar];
 Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, simp_:Identity] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
 		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint},
+		If[
+		Xform ===0,
+			Return[0]];
+			
 		If[
 		gintUUIN===Automatic,
 			gintUU = SparseArray[gUU],
