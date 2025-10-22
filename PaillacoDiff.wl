@@ -375,6 +375,8 @@ DNAofForm::noBaseFound =
 	
 DNAofForm /: DNAofForm[X_,coordIN_:Automatic] := 
 	Module[{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track},
+		If[X===0,
+			Return[{0}]];
 		coordint = 
 			Which[
 				coordIN =!= Automatic,
