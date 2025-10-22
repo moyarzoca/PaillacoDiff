@@ -7,6 +7,7 @@ So I want to thank the author of RGTC package for keeping it open source.
 Also I thank Ruggero Noris and Stefano Maurelli the code and 
 for poiting my out issues and helped me to improve the code.
 "
+(* --------- Form Degree --------- *)
 
 ClearAll[FormDegree]
 FormDegree[d[x_]]:=1+FormDegree[x];
@@ -35,7 +36,7 @@ GamWeight[\[Sigma][i_?IntegerQ]]:=2;
 GamWeight[id2]:=2;
 d[Gam[x_?IntegerQ]]:=0;
 
-(*============== Definition Wedge ==============*)
+(*=============== Wedge ===============*)
 
 ClearAll[Wedge]
 Default[Wedge]:=1;
@@ -61,7 +62,7 @@ If[Dimensions[A]!=Dimensions[B],Return[Print["Incompatible matrix dimensions for
 matrixdimension=Dimensions[A][[1]];
 Table[Sum[Wedge[A[[ii,kk]],B[[kk,jj]]],{kk,matrixdimension}],{ii,matrixdimension},{jj,matrixdimension}]]
 
-(*===== Exterior derivative =====*)
+(*====== Exterior derivative ======*)
 
 SetAttributes[d,{Listable}];
 d[x_Wedge/;Length@x===2] := Wedge[d[First[x]],Last[x]]+(-1)^FormDegree[First[x]]*Wedge[First[x],d[Last[x]]];
@@ -94,6 +95,7 @@ CenterDot[X_TensorProduct,Y__TensorProduct] := Fold[auxCenterDot,X,{Y}];
 auxproduct[X_,Y_] := If[GamWeight[X]===1,CenterDot[X,Y],Dot[X,Y]];
 auxCenterDot[X_TensorProduct,Y_TensorProduct] := TensorProduct[Sequence@@Table[auxproduct[(List@@X)[[i]] ,(List@@Y)[[i]]],{i,Length@X}]];
 
+CliffordMap[X_] := X/.dxToe/.Wedge->Inactive[CenterDot]/.e[i_]:>Gam[i]//Activate;
 (*============ Abstract tensor product between Gamma and Pauli Matrices ============*)
 
 Unprotect[TensorProduct]
@@ -156,6 +158,90 @@ d[\[Sigma][i_?IntegerQ]]:=0;d[id2]=0;
 	\[Sigma][i_?IntegerQ].\[Sigma][j_?IntegerQ]:>\[Sigma][j].\[Sigma][i]/;i>j *),\[Sigma][1] . \[Sigma][2]:>I \[Sigma][3],\[Sigma][2] . \[Sigma][3]:>I \[Sigma][1],\[Sigma][1] . \[Sigma][3]:>-I \[Sigma][2],
 	\[Sigma][2] . \[Sigma][1]:>-I \[Sigma][3],\[Sigma][3] . \[Sigma][2]:>-I \[Sigma][1],\[Sigma][3] . \[Sigma][1]:>I \[Sigma][2]}
 	
+(*   ----- simpGam2 ----*)
+Clear[simpGam2];
+Clear[simpGamList];
+
+simpGam2::trapped = "There is a problem with center dot. Somebody got trapped...";
+
+simpGam2[X_] := X/.CenterDot[Gams__]:>simpGamList[Gams]
+simpGamList[Gams__]:=
+	Module[{numbs,Sortnumbs,sign,partition,\[Eta]int,simpPartitionElement,signPerm},
+				
+		numbs = DeleteCases[List[Gams],idGam]/.Gam->Identity;
+		Print[numbs];
+		If[Not[ValueQ[\[Eta]dd]],
+			Print["!!!! There is a problem. Define your flat metric \[Eta]dd"];
+			Return[Gams],
+				\[Eta]int = \[Eta]dd
+		];
+		If[
+		Signature[numbs]=!=0,
+			Return[CenterDot[Gams]]
+		];
+		Sortnumbs = Sort[numbs];
+		signPerm = Signature[PermutationList[FindPermutation[numbs, Sortnumbs]]];
+
+		partition = Split[Sortnumbs];
+		
+		simpPartitionElement[partElem_List] := 
+			Module[{outlist,comp,signElem},
+			comp = partElem[[1]];
+			If[
+			EvenQ[Length[partElem]],
+				outlist = {};
+				signElem = (\[Eta]int[[comp,comp]])^(Length[partElem]/2),
+					outlist = {comp};
+					signElem = (\[Eta]int[[comp,comp]])^((Length[partElem]-1)/2)
+			];
+			Return[<|"outlist"->outlist, "sign"->signElem|>]
+			];
+		
+		outFromsimp = Map[simpPartitionElement, partition];
+		signpowers =  
+		sign = signPerm* Apply[Times,Map[#["sign"]&,outFromsimp]];
+		Return[sign*Apply[CenterDot,Map[Gam,Flatten[Map[#["outlist"]&,outFromsimp]]]]];
+		];
+(*=== Safe Production between Gam Sigma matrices ===*)
+
+RuleFromTensorProd[X_] := 
+Module[{collected,listTerms},
+	collected = Collect[X,_TensorProduct];
+	listTerms = 
+		If[
+		Head[collected]===Plus,
+			Apply[List,collected],
+				{collected}
+		];
+	Map[getCoefTensorProd,listTerms]
+];
+
+Clear[getCoefTensorProd]
+getCoefTensorProd[X_] := 
+	Module[{basis,coef},
+		basis = Cases[X, _TensorProduct,{0,\[Infinity]}];
+		If[Length[basis]===1,
+			basis = basis[[1]];
+			coef  = Coefficient[X,basis]
+		];
+		Return[basis->coef]
+	];
+	
+
+prodGamSig[X1_,X2_]:=
+	Module[{rules1, rules2,alltuples,thesum},
+		rules1 = Association[RuleFromTensorProd[X1]];
+		rules2 = Association[RuleFromTensorProd[X2]];
+		alltuples = Tuples[{Keys[rules1],Keys[rules2]}];
+			
+		thesum = Sum[
+			rules1[tup[[1]]]*rules2[tup[[2]]]*(simpGamma[CenterDot[tup[[1]],tup[[2]]]]//.\[Sigma]rules)
+		,
+		{tup,alltuples}];
+		
+		Return[thesum];
+	];
+
 
 (*====== Towards contraction operator =====*)
 
@@ -188,8 +274,6 @@ Module[{listx,listxref,killzleft},
 ];
 coordcontraction[X_List,coord_:coord]:=Map[coordcontraction[#,coord]&,X];
 coordcontraction[X_,coord_:coord]:=Extractorleft[X,#]&/@d[coord];
-
-
 GenerateGamma[GU_,type_:"Symbolic"] := 
 Module[{iterationsigma,pair,auxlastelement,beforegam,gu,readytoKronProd,sigmarule},
 	Clear[GamTosigma];
@@ -219,53 +303,342 @@ Module[{iterationsigma,pair,auxlastelement,beforegam,gu,readytoKronProd,sigmarul
 	GU=Table[If[i===1,I,1]KroneckerProduct[Sequence@@(readytoKronProd[[i]])],{i,Dim}];
 ];
 
+(*
+			---- DNAofForm ----
+*)
 
-DNAofForm /: DNAofForm[X_,coordIN_:coord] := 
-Module[{listtermsX,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,CollectedForm, track},
-	If[
-	coord===coordIN,
-		coordint=coord;
-		Dimint=Length@coord,
-			coordint=coordIN; 
-			Dimint=Length@coordint
+PolyFormQ[expr_] := Module[{terms, degs,exprExpand,degsDiff},
+	exprExpand = Expand[expr];
+	terms = 
+		If[
+		Head[exprExpand] === Plus,
+			Apply[List,exprExpand],
+				{exprExpand}
 		];
+	degs = Map[FormDegree, terms];
+	degsDiff = DeleteDuplicates[degs];
 	If[
-	Length@coordint>0,
-		Do[mapcoord[coordint[[ii]]] = ii, {ii, Dimint}],
-			Return[Print[Style["Coordinates not defined. ",Red,14],"The code requiers a global variabled called ",
-			Style[coord,Bold]," which is an array of the coordiantes."]]
+	Length[degsDiff]>1,
+		Return[True],
+			Return[False]
+	];
+];
+
+Clear[coeffBaseElement];
+
+coeffBaseElement[pform_, coord_]:=
+	Module[{baseElement, coordBasisQ,deg, coeff, 
+		baseAlong, Dim, mapcoord,baseNumb, sign},
+		
+		deg = FormDegree[pform];
+		Dim = Length[coord];
+		mapcoord = AssociationThread[coord -> Range[Dim]];
+		
+		coordBasisQ = FreeQ[pform, e[_]];
+		
+		Which[
+		(deg===1)&&coordBasisQ,
+			baseElement = Cases[pform, _d, {0, Infinity}];
+			baseNumb = baseElement/.d[y_]:>{mapcoord[y]}
+			,
+		(deg===1)&&Not[coordBasisQ],
+			baseElement = Cases[pform, _e, {0, Infinity}];
+			baseNumb = baseElement/.e[y_]:>{y}
+			,
+		(deg > 1)&&coordBasisQ,
+			baseElement = Cases[pform, _Wedge, {0, Infinity}];
+			baseNumb = baseElement/.Wedge[YY__]:>{YY}/.d[y_]:>{mapcoord[y]};
+			,
+		(deg > 1)&&Not[coordBasisQ],
+			baseElement = Cases[pform, _Wedge, {0, Infinity}];
+			baseNumb = baseElement/.Wedge[YY__]:>{YY}/.e[y_]:>{y};
 		];
+		
+		baseNumb = Flatten[baseNumb];
+		sign = Signature[baseNumb];
+		baseNumb = Sort[baseNumb];
+		
+		If[
+		Length[baseElement]===1,
+			baseAlong = baseElement[[1]];
+			coeff = Coefficient[pform, baseAlong],
+				Message[DNAofForm::noBaseFound, baseElement];
+				Return[$Failed]
+		];
+	Return[{sign*coeff, baseNumb}];
+	];
+
+DNAofForm::nocord = 
+	"No coordinates provided to computed DNAofForm";
+DNAofForm::noBaseFound = 
+	"No base element found";
 	
-	If[
-	FormDegree[X]===1,
-		track = "p=1",
-			track = "p>1"
+DNAofForm /: DNAofForm[X_,coordIN_:Automatic] := 
+	Module[{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track},
+		coordint = 
+			Which[
+				coordIN =!= Automatic,
+					coordIN,
+				ValueQ[coord], 
+					coord,
+				True,
+					Message[DNAofForm::nocord];
+					Return[$Failed]
+			];
+		Dimint = Length[coordint];
+		
+		Collected = 
+			Which[
+			FormDegree[X]===1,
+				Collect[Expand@X, {d[1forms_], e[num_]}],
+			(FormDegree[X]>1)||PolyFormQ[X],
+				Collect[Expand@X, Wedge[listforms___]]
+			];
+		
+		TermsXArray = 
+			If[
+			Head[Collected] === Plus,
+				Apply[List,Collected],
+					{Collected}
+				];
+		
+		Return[Map[coeffBaseElement[#, coordint]&,TermsXArray]];
 	];
 	
-	CollectedForm["p=1"] = Collect[Expand@X, d[1forms_]];
-	CollectedForm["p>1"] = Collect[Expand@X, Wedge[listforms___]];
+(*
+   ---- Tools DNA and Sparse Array ----
+*)
+
+Clear[SparseFromDNA];
+SparseFromDNA[DNA_List, Dim_Integer, formdeg_Integer]:=
+ Module[{rules = <||>, perms, sign, base, comp},
+	Do[
+		comp = CompBase[[1]];
+		base = CompBase[[2]];
+		perms = Permutations[base];
+		Do[
+			sign = Signature[perm];
+			rules[perm] = sign * comp
+		,
+		{perm, perms}]
+		,
+	{CompBase, DNA}];
+	SparseArray[Normal[rules], ConstantArray[Dim, formdeg]]
+ ];
+
+Clear[DNAFromSparse];
+DNAFromSparse[tensor_SparseArray] := 
+Module[{tensorRules,indepComps,getDNAcomp},
+	tensorRules = ArrayRules[tensor];
+	indepComps = 
+		Select[
+			DeleteDuplicates[
+				Map[Sort,Keys[tensorRules]]
+			]
+		,VectorQ[#,IntegerQ]&];
+		
+	getDNAcomp[tRules_, comp_] := Apply[List,Reverse[Select[tRules, First[#]===comp&][[1]]]];
 	
-	listtermsX = 
-	If[
-	Head[CollectedForm[track]] === Plus,
-		List @@ CollectedForm[track],
-			{CollectedForm[track]}
-		];
-	
-	mappiator[element_] := 
-	If[
-	FreeQ[element,Wedge],
-		(element/. coeff_.*e[YY_] :> {coeff, {YY}})/.coeff_.*d[YY_]:>{coeff,{mapcoord[YY]}},
-			element/.coeff_.*Wedge[YY__]:>{coeff,{YY}/.{d[XX_]:>mapcoord[XX],e[nn_]:>nn}}
-		];
-	Return[mappiator/@listtermsX];
+	Table[
+		getDNAcomp[tensorRules, comp]
+	,
+	{comp, indepComps}]
 ];
+
+
+(*====== Squares of differential forms ======*)
+
+(* ---- Tools ---- *)
+nonzeroCompsFirst[Tensorsparse_SparseArray, mu_Integer] :=
+	Module[{tensorList,keysWithDuplicates},
+		tensorList = ArrayRules[Tensorsparse];
+		keysWithDuplicates = 
+			Map[
+			Delete[#,1]&, 
+				Select[Keys[tensorList],(#[[1]]===mu)&]
+			];
+
+		DeleteDuplicates[Map[Sort,Select[keysWithDuplicates, Signature[#]=!=0&]]]
+	];
+	
+Clear[nonzeroComps];
+
+nonzeroComps[Tensorsparse_SparseArray] :=
+	Module[{tensorList,keysWithDuplicates},
+		tensorList = ArrayRules[Tensorsparse];
+		DeleteDuplicates[Map[Sort,Select[Keys[tensorList],(Signature[#]=!=0)&]]]
+	];
+
+Clear[getCompRule];
+getCompRule[tensor_List, comp_List] := First[Values[Select[tensor, #[[1]]===comp&]]];
+
+Clear[RaiseAllSparse];
+RaiseAllSparse[FformSparse_SparseArray, gUU_SparseArray, formdegree_Integer] :=
+	Module[{seqgUU, indicesContract, FtensorSparse},
+		seqgUU = Sequence@@Table[gUU, {IIinx,formdegree}];
+		indicesContract = Table[{inx, formdegree + 2*inx-1}, {inx, formdegree}];
+		Return[Activate[TensorContract[Inactive[TensorProduct][FformSparse,seqgUU], indicesContract]]];
+	];
+(*   FormSquare  *)
+
+Clear[FormSquare];
+FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity, coordIN_:Automatic] :=
+Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
+	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
+	FformValues, FtensorValues, coordint,Dim},
+	If[
+	Xform ===0,
+		Return[0]
+	];
+		
+	If[
+	gUUIN===Automatic,
+		gintUU=SparseArray[gUU],
+			gintUU = SparseArray[gUUIN]
+	];
+	
+	If[
+	coordIN===Automatic,
+		coordint = coord,
+			coordint = coordIN
+	];
+	
+	deg = FormDegree[Xform];
+	Dim = Length[coordint];
+	FformDNA = simp[DNAofForm[Xform, coordint]];
+	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
+	FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
+	
+	FormComps   = nonzeroComps[FformSparse];
+	TensorComps = nonzeroComps[FtensorSparse];
+	InterComps  = Intersection[FormComps , TensorComps];
+	
+	FformRule   = ArrayRules[FformSparse];
+	FtensorRule = ArrayRules[FtensorSparse];
+	
+	FformValues   = simp[Map[getCompRule[FformRule,  #]&, InterComps]];
+	FtensorValues = simp[Map[getCompRule[FtensorRule, #]&, InterComps]];
+	
+	Return[(FformValues . FtensorValues)*(deg)!]
+];
+
+(*   FormSquaredd  *)
+Clear[FormSquaredd];
+FormSquaredd[0,__]:=0
+
+FormSquaredd[Xform_, gintUUinput_:Automatic, simp_:Identity, coordIN_:Automatic] :=
+Module[{deg,FformDNA,FformSparse,gintUU,
+	coordint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
+	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
+	Xdmunu, XdUmunu, FtensorSparse},
+	
+	If[
+	gintUUinput===Automatic,
+		gintUU = SparseArray[gUU],
+			gintUU = SparseArray[gintUUinput]
+	];
+	
+	If[
+	coordIN===Automatic,
+		coordint = coord,
+			coordint = coordIN
+	];
+	
+	Dim = Length[coordint];
+	deg = FormDegree[Xform];
+	FformDNA = simp[DNAofForm[Xform, coordint]];
+	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
+	
+	seqgUU = Sequence@@Table[gintUU,{IIinx,deg-1}];
+	
+	indexcontr = Table[{iiinx+1,deg+2*iiinx-1},{iiinx,deg-1}];
+	FtensorSparse = Activate[TensorContract[Inactive[TensorProduct][FformSparse,seqgUU],indexcontr]];
+	
+	nonzeroDn[mu_] := nonzeroCompsFirst[FformSparse, mu];
+	nonzeroUp[nu_] := nonzeroCompsFirst[FtensorSparse, nu];
+	nonzeroInter[mu_, nu_] := Intersection[nonzeroDn[mu],nonzeroUp[nu]];
+	
+	nonzeroInterDn[mu_,nu_] := Map[Prepend[#,mu]&,nonzeroInter[mu,nu]];
+	nonzeroInterUp[mu_,nu_] := Map[Prepend[#,nu]&,nonzeroInter[mu,nu]];
+	
+	FformRule = ArrayRules[FformSparse];
+	FtensorRule = ArrayRules[FtensorSparse];
+		
+	Table[nonzeroXd[mu,nu]  = Map[getCompRule[FformRule,  #]&, nonzeroInterDn[mu,nu]],{mu,Dim},{nu,mu,Dim}];
+	Table[nonzeroXdU[mu,nu] = Map[getCompRule[FtensorRule, #]&, nonzeroInterUp[mu,nu]],{mu,Dim},{nu,mu,Dim}];
+	Xsqdd = ConstantArray[0,{Dim,Dim}];
+	Do[
+		Xdmunu = simp[nonzeroXd[mu,nu]];
+		XdUmunu = simp[nonzeroXdU[mu,nu]];
+		Xsqdd[[mu,nu]] = Xdmunu . XdUmunu;
+		Xsqdd[[nu,mu]] = Xsqdd[[mu,nu]];
+	,{mu, Dim}, {nu, mu, Dim}];
+	
+	Return[((deg-1)!)*Xsqdd];
+
+];
+
+(*   Hstar  *)
+Clear[Hstar];
+Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, simp_:Identity] := 
+	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
+		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint},
+		If[
+		Xform ===0,
+			Return[0]];
+			
+		If[
+		gintUUIN===Automatic,
+			gintUU = SparseArray[gUU],
+				gintUU = SparseArray[gintUUIN]
+		];
+		
+		If[
+		sqrtdetgIN===Automatic,
+			sqrtdetgint = sqrtdetg,
+				sqrtdetgint = sqrtdetgIN
+		];
+		
+		If[
+		coordIN===Automatic,
+			coordint = coord,
+				coordint = coordIN
+		];
+		
+		Dim = Length[coordint];
+		deg = FormDegree[Xform];
+		FformDNA = simp[DNAofForm[Xform, coordint]];
+		FformSparse = SparseFromDNA[FformDNA, Dim, deg];
+		FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
+		
+		TensorComps = nonzeroComps[FtensorSparse];
+		FtensorRule = ArrayRules[FtensorSparse];
+		FtensorValues   = simp[Map[getCompRule[FtensorRule,  #]&, TensorComps]];
+		
+		FtensorDict = AssociationThread[TensorComps, FtensorValues];
+		
+		compToStar[formcomp_] :=
+			Module[{complement, toepsilon},
+				complement = Complement[Range[Dim],formcomp];
+				toepsilon = Flatten[{formcomp,complement}];
+				<|"eps"->toepsilon, "basis" -> Map[coordint[[#]]&, complement]|>
+			];
+		
+		starF = 
+			sqrtdetgint*Sum[
+				FtensorDict[comp]*Signature[compToStar[comp]["eps"]]*Apply[Wedge, d[compToStar[comp]["basis"]]]
+			,
+			{comp, TensorComps}];
+		Return[starF]
+	];
+
+
+
+_
 
 
 Errorcoord[] := Print[Style["Coordinates not defined. ",Red,14], "The code requiers a global variabled called ",
 					Style[coord,Bold]," which is an array of the coordiantes."]
-
-
 
 FormsToMatrix[X_,formd_:"formdegree"] := 
 Module[
@@ -306,8 +679,6 @@ listtermsnumbers1, listtermscoeffs, listtermscoeffs1, bigmatrix, indicess, numte
       Return[bigmatrix];
 ];
 
-
-
 DNAofMatrix[X_] :=
 Module[{blockofX,LengthBlocks,nonzeroX,CoeffcientsofX},
 	nonzeroX = SparseArray[X]["NonzeroPositions"];
@@ -315,8 +686,6 @@ Module[{blockofX,LengthBlocks,nonzeroX,CoeffcientsofX},
 	CoeffcientsofX = Table[X[[Sequence@@blockofX[[IIinx]]]],{IIinx,Length@blockofX}];
 	Table[{CoeffcientsofX[[IIinx]], blockofX[[IIinx]]}, {IIinx, Length@blockofX}]
 ];
-
-
 
 DNAofHStarU[X_,type_:"ListOfInput",sqrtdetgcoord_:{sqrtdetg,coord}] := 
 Module[{DNAofX,DNAofHStarX,coordint,Dimint,sqrtdetgint},
@@ -331,7 +700,8 @@ Module[{DNAofX,DNAofHStarX,coordint,Dimint,sqrtdetgint},
 	If[
 	ValueQ[sqrtdetgcoord[[1]]]===False,
 		Return[Print["You must declare a global variable ",Style["sqrtdetg",Bold]," which is Sqrt[-det[Subscript[g, \[Mu]\[Nu]]]]."]]
-	];
+
+		];
 	If[
 	type==="DNA",
 		DNAofX=X,DNAofX=DNAofMatrix[X]];
@@ -382,31 +752,30 @@ Module[{degreeform},
 
 MyHStar[X_List,simp_:Identity,gddcoord_:{gdd,coord}]:=MyHStar/@X;
 
-MyHStar[X_,simp_:Identity,gddcoord_:{gdd,coord}]:=
+MyHStar[X_,simp_:Identity,gddcoordgUUsqrt_:{gdd,coord}]:=
 Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimint,coordint,sqrtdetgint},
-	If[
-	X==0,
-		Return[0]
-	];
 	
-	If[
-	gddcoord==={gdd,coord},
-		gUUint=gUU;
-		Dimint=Length@coord;
-		sqrtdetgint=sqrtdetg;
-		coordint=coord,
-			gUUint=Inverse[gddcoord[[1]]];
-			coordint=gddcoord[[2]];
-			Dimint=Length[gddcoord[[2]]];
-			sqrtdetgint=simp[Sqrt[-Det[gddcoord[[1]]]]]
-	];
+	If[X==0, Return[0]];
 	
+	{coordint, Dimint, gUUint, sqrtdetgint} = 
+		Which[
+			gddcoordgUUsqrt === {gdd, coord},
+				{coord, Length[coord], gUU, sqrtdetg},
+		
+			Length[gddcoordgUUsqrt] == 4,
+				{gddcoordgUUsqrt[[2]], Length[gddcoordgUUsqrt[[2]]], gddcoordgUUsqrt[[3]], gddcoordgUUsqrt[[4]]},
+		
+			True,
+				{gddcoordgUUsqrt[[2]], Length[gddcoordgUUsqrt[[2]]], Inverse[gddcoordgUUsqrt[[1]]], simp[Sqrt[-Det[gddcoordgUUsqrt[[1]]]]]}
+		];
+
 	gUUnonZero =
-	Table[
-		#[[2]]&/@Select[SparseArray[gUUint]["NonzeroPositions"],#[[1]]==iiinx&]
-	,{iiinx,Dimint}];
+		Table[
+			#[[2]]&/@Select[SparseArray[gUUint]["NonzeroPositions"],#[[1]]==iiinx&]
+		,{iiinx,Dimint}];
+
 	formdegree = FormDegree[X]; 
-	
+
 	If[
 	formdegree===0,
 		Return[X*sqrtdetgint Wedge@@(d/@coordint)]
@@ -416,15 +785,15 @@ Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimi
 	auxtiempo = SessionTime[];
 	
 	thetuples = 
-	Table[
-		Select[
-			Tuples[
-				Table[
-					gUUnonZero[[Last[DNA[[IIinx]]][[kkinx]]]]
-				,{kkinx,formdegree}]
-			]
-		,Signature[#]!=0&]
-	,{IIinx,Length@DNA}];
+		Table[
+			Select[
+				Tuples[
+					Table[
+						gUUnonZero[[Last[DNA[[IIinx]]][[kkinx]]]]
+					,{kkinx,formdegree}]
+				]
+			,Signature[#]!=0&]
+		,{IIinx,Length@DNA}];
 	
 	BADDNAUp = 
 	Flatten[
@@ -442,41 +811,8 @@ Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimi
 
 HStarT[X_]:=(-1)^(FormDegree[X]*(Dim-FormDegree[X]))*MyHStar[X];
 
-(*====== Squares of differential forms ======*)
 
-Clear[FormSquare];
-FormSquare[Xform_,gintUUinput_:gUU,simp_:Identity] :=
-Module[{degreeform,Xd,XU,gintUU,listindices},
-	If[
-	gintUUinput===gUU,
-		gintUU=gUU,
-			gintUU=gintUUinput
-	];
-	
-	degreeform = FormDegree[Xform];
-	Xd = simp[FormsToMatrix[Xform]];
-	listindices = Join[Table[{iiinx,2*degreeform+2*iiinx-1},{iiinx,degreeform}], Table[{iiinx+degreeform,2*degreeform+2*iiinx},{iiinx,degreeform}]];
-	Return[Activate@TensorContract[Inactive[TensorProduct][Xd,Xd,Sequence@@Table[gintUU,{IIinx,degreeform}]], listindices]]
-];
 
-Clear[FormSquaredd];
-FormSquaredd[0,simp_:Identity]:=0
-
-FormSquaredd[Xform_,gintUUinput_:gUU,simp_:Identity] :=
-Module[{degreeform,Xd,XdU,DNAofXd,gintUU,listindices},
-	If[
-	gintUUinput===gUU,
-		gintUU=gUU,
-			gintUU=gintUUinput
-	];
-	DNAofXd=simp[DNAofForm[Xform]];
-	Xd=SparseArray[DNAtoMatrix[DNAofXd]];
-	degreeform=FormDegree[Xform];
-	listindices = Join[Table[{iiinx+1,2*degreeform+2*iiinx-1},{iiinx,degreeform-1}], Table[{iiinx+1+degreeform,2*degreeform+2*iiinx},{iiinx,degreeform-1}]];
-	Return[
-		Activate[Simplify[TensorContract[Inactive[TensorProduct][Xd, Xd, Sequence@@Table[gintUU,{IIinx,degreeform-1}]], listindices]]]
-	]
-];
 
 
 (*====== Hodge star in the vielbein basis ======*)
@@ -510,52 +846,62 @@ Module[{formdegree,DNA,lengthDNA,func\[Eta],mapindices,relevanmatrix\[Eta],signi
 	
 	Return[Sum[term[IIIinx],{IIIinx,lengthDNA}]];
 ];
-
-
 (* ====== Riemann geometry ====== *)
-
-
 
 ClearGeometric[]:=Module[{},Clear[ChrisUdd];Clear[Rdd];Clear[RicciScalar];Return[Print["Clear OK - ChrisUdd, Rdd, RicciScalar"]]];
 DiffToMatrix[themetric_,coordIn_:coord]:=
-Module[{Dimint},
-	Dimint=Length@coordIn;
-	Table[
-		If[iiinx!=jj,
-			1/2*Coefficient[Collect[Expand[themetric],d[X_]d[Y_]],d[coordIn[[iiinx]]]d[coordIn[[jj]]]],
-				Coefficient[Collect[Expand[themetric],d[X_]d[Y_]],d[coordIn[[iiinx]]]d[coordIn[[jj]]]]
-		]
-	,{iiinx,Dimint},{jj,Dimint}]
-];
+	Module[{Dimint},
+		Dimint=Length@coordIn;
+		Table[
+			If[iiinx!=jjinx,
+				1/2*Coefficient[Collect[Expand[themetric],d[X_]d[Y_]],d[coordIn[[iiinx]]]d[coordIn[[jjinx]]]],
+					Coefficient[Collect[Expand[themetric],d[X_]d[Y_]],d[coordIn[[iiinx]]]d[coordIn[[jjinx]]]]
+			]
+		,{iiinx,Dimint},{jjinx,Dimint}]
+	];
+
+
+Computegdd[bundle_Association] := 
+	Module[{gdd, sqrtdetg, update, copybundle},
+		If[
+			KeyExistsQ[bundle, "gdd"] ,
+				Return[bundle],
+					gdd = DiffToMatrix[bundle["ds2"], bundle["coord"]];
+					sqrtdetg = Sqrt[-Det[gdd]];
+		];
+		copybundle = bundle;
+		update = AssociateTo[copybundle, <|"gdd" -> gdd, "sqrtdetg" -> sqrtdetg|>];
+		Return[update];
+		
+	]
 
 ComputeChrisUdd[simp_:Identity,gddcoord_:{gdd,coord}] :=
-Module[{dgdd,dGamdd,dChrisdd,initialTime,valuesimp,gddint,coordint,gUUint,Dim},
-	If[
-	gddcoord=!={gdd,coord},
-		gddint=gddcoord[[1]];
-		coordint=gddcoord[[2]],
-			gddint=gdd;coordint=coord
+	Module[{dgdd,dGamdd,dChrisdd,initialTime,valuesimp,gddint,coordint,gUUint,Dim},
+		If[
+		gddcoord=!={gdd,coord},
+			gddint=gddcoord[[1]];
+			coordint=gddcoord[[2]],
+				gddint=gdd;coordint=coord
+		];
+		gUUint = simp[Inverse[gddint]];
+		Dim = Length@coordint;
+		initialTime = SessionTime[];
+		dgdd[iiinx_,jj_,kk_] := simp[D[gddint[[jj,kk]],coordint[[iiinx]]]];
+		dGamdd[kk_,iiinx_,jj_] := simp[1/2 dgdd[iiinx,jj,kk]+1/2 dgdd[jj,iiinx,kk]-1/2 dgdd[kk,iiinx,jj]];
+		dChrisdd = Array[dGamdd,{Dim,Dim,Dim}];
+		ChrisUdd = simp[gUUint . dChrisdd];
+		If[
+		simp===Identity,
+			valuesimp="without simplification.",
+				valuesimp="with simplification."
+		];
+		Return[
+		Print[Style["ChrisUdd",Bold],   "   ",$chrisdef,"  Christoffel symbols computed in ",SessionTime[]-initialTime," sec. ",valuesimp]
+		];
 	];
-	gUUint = simp[Inverse[gddint]];
-	Dim = Length@coordint;
-	initialTime = SessionTime[];
-	dgdd[iiinx_,jj_,kk_] := simp[D[gddint[[jj,kk]],coordint[[iiinx]]]];
-	dGamdd[kk_,iiinx_,jj_] := simp[1/2 dgdd[iiinx,jj,kk]+1/2 dgdd[jj,iiinx,kk]-1/2 dgdd[kk,iiinx,jj]];
-	dChrisdd = Array[dGamdd,{Dim,Dim,Dim}];
-	ChrisUdd = simp[gUUint . dChrisdd];
-	If[
-	simp===Identity,
-		valuesimp="without simplification.",
-			valuesimp="with simplification."
-	];
-	Return[
-	Print[Style["ChrisUdd",Bold],   "   ",$chrisdef,"  Christoffel symbols computed in ",SessionTime[]-initialTime," sec. ",valuesimp]
-	];
-];
-
-
 Clear[ComputeRdd];
 ComputeRdd["conf"] = <|"ComputeChris"->True|>;
+
 ComputeRdd[simp_:Identity,gddcoord_:{gdd,coord}] :=
 Module[{useglobalgdd,TrChrisd,term1,term2,term3,term4,auxterm1f,auxterm2f,initialTime,valuesimp,gddint,coordint,Dim},
 	initialTime=SessionTime[];
@@ -633,8 +979,6 @@ inP[x_,y_Plus]:=inP[x,#]&/@y
 inP[x_.*e[a_],y_.*e[b_]]:=x*y*IdentityMatrix[Dim][[a,b]]
 inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]]:=x*y*(IdentityMatrix[Dim][[j,k]]*Wedge[p]-Wedge[e[k],inP[e[j],Wedge[p]]])
 Contractione[X_]:= Table[inP[e[a1111],X],{a1111,Dim}];
-
-
 ClearAll[SetVielbein]
 
 SetVielbein[eIN_,flatmetric_,simp_:Identity]:=
@@ -670,8 +1014,6 @@ Module[{},
 	]
 ];
 
-
-
 ComputeSpinConnection[eIN_,flatmetric_,simp_:Identity]:=
 Module[{secondterm\[Omega],GUdd},
 	SetVielbein[eIN,flatmetric];
@@ -691,9 +1033,7 @@ Module[{secondterm\[Omega],GUdd},
 		Style["\[Omega]dd",Bold],"  ",PrintIndex["\[Omega]",{-"a",-"b"}]," = ",PrintIndex["\[Eta]",{-"a",-"c"}],PrintIndex["\[Omega]",{"c",-"b"}]
 	];
 ];
-
-
-(*====== Print of the definition of the objects ======*)
+(*====== Build Print definition of the objects ======*)
 
 PrintIndex[g_,index_]:=Module[{auxobject},
 auxobject=g;
@@ -716,7 +1056,326 @@ $defRicciTensor=
 Row[{PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}]," = ",PrintIndices["\[PartialD]",{dn},{"\[Rho]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Mu]","\[Nu]"}],"-",
 PrintIndices["\[PartialD]",{dn},{"\[Mu]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Rho]","\[Nu]"}],"+",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Rho]","\[Lambda]"}],
 PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Mu]","\[Nu]"}],"-",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Mu]","\[Lambda]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Rho]","\[Nu]"}]}];
-
-
 $defRicciScalar=
 Row[{"R"," = ",PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}],PrintIndices["g",{up,up},{"\[Mu]","\[Nu]"}]}];
+
+
+(*==========================================================================================================================================*)
+
+(*
+|------------------------------------------------------
+|     Thinking on Association for saving tensor
+|------------------------------------------------------
+
+                     --- Utils ---
+*)
+
+CleanZeros[X_Association] := KeySelect[X, X[#] =!= 0 &];
+
+ATensorToTensor2sym[Xab_Association, {i_, j_}] := 
+	Module[{m,n},
+		{m,n} = If[i <= j, {i,j}, {j,i}];
+		First[Lookup[Xab, {{m,n}}, 0]]
+	];
+
+ATensorToTensor3symLast[Xabc_Association, {p_, i_, j_}] := 
+	Module[{q,m,n},
+		{q,m,n} = If[i <= j,{p,i,j},{p,j,i}];
+		First[Lookup[Xabc, {{q,m,n}}, 0]]
+	];
+
+ATensorToTensorRiem[Xabcd_Association, {i_, j_, k_, l_}] := 
+	Module[{p,q,m,n,keyMissing,sign=1},
+		
+		{p,q,m,n} = If[i <= j, {i,j,k,l}, sign = -sign;{j,i,k,l}];
+		{p,q,m,n} = If[m <= n, {p,q,m,n}, sign = -sign;{p,q,n,m}];
+
+		keyMissing = Not[KeyExistsQ[Xabcd, {p,q,m,n}]];
+		{p,q,m,n} = If[keyMissing, {m,n,p,q}, {p,q,m,n}];
+		
+		sign*First[Lookup[Xabcd, {{p,q,m,n}}, 0]]
+	];
+
+failRequirements[bundle_Association, req_List] :=
+	Module[{keyInBundle, keyNegation},
+		keyInBundle[key_] := KeyExistsQ[bundle, key];
+		keyNegation = Not[Apply[And, Map[keyInBundle, req]]];
+		Return[keyNegation];
+	];
+
+(*
+				---- Metric ----
+*)
+
+ComputeAgddAgUU[bundle_Association] := 
+	Module[{Dim,gdd,Agdd,gUU,AgUU,buildSymmetric2},
+		Dim = Length[bundle["coord"]];
+		gdd = DiffToMatrix[bundle["ds2"], bundle["coord"]];
+		gUU = Inverse[gdd];
+		
+		buildSymmetric2[X_] := 
+			Association[
+				Table[
+				{i, j} -> X[[i,j]]
+				,{i,Dim}, {j,i, Dim}]
+			];
+		
+		Agdd = buildSymmetric2[gdd];
+		AgUU = buildSymmetric2[gUU];
+
+		Agdd = KeySelect[Agdd, Agdd[#] =!= 0 &];
+		AgUU = KeySelect[AgUU, AgUU[#] =!= 0 &];
+		
+		Return[<|"Agdd" -> Agdd, "AgUU" -> AgUU|>];
+	];
+
+(*
+				---- ChrisUdd ----
+*)
+
+ComputeAChrisUdd[bundle_Association] := 
+	Module[{coord,Dim,gdd,Agdd,gUU,AgUU,AChrisUdd,dgdd,dGamdd,GamUdd},
+		
+		coord = bundle["coord"];
+		Dim = Length[coord];
+		Agdd = bundle["ATensors","Agdd"];
+		AgUU = bundle["ATensors","AgUU"];
+		gdd[i_,j_] := ATensorToTensor2sym[Agdd, {i,j}];
+		gUU[i_,j_] := ATensorToTensor2sym[AgUU, {i,j}];
+		
+		dgdd[i_,j_,k_] := D[gdd[j,k],coord[[i]]];
+		dGamdd[k_,i_,j_] := 1/2*dgdd[i,j,k]+1/2*dgdd[j,i,k]-1/2*dgdd[k,i,j];
+		GamUdd[k_,i_,j_] := Sum[gUU[k,l]*dGamdd[l,i,j] ,{l,Dim}];
+		
+		AChrisUdd = 
+			Association[
+				Table[
+					{i,j,k} -> GamUdd[i,j,k]
+				,{i,Dim}, {j, Dim},{k,j,Dim}]
+			];
+	
+		AChrisUdd = CleanZeros[AChrisUdd];
+		Return[AChrisUdd];
+	];
+
+(*
+				---- Riemdddd ----
+*)
+
+ComputeARiemdddd[bundle_Association] := 
+	Module[{coord,Dim,AChrisUdd, ChrisUdd, dChrisUdd,ChrisChrisUddd,RiemUddd,Agdd,gdd, Riemdddd,seen,list, 
+			ARiemdddd,ChrisUddArray,dChrisUddArray,RiemUdddArray,ChrisChrisUdddArray,gddArray,RiemddddArray,ChrisUddArrayToDer},
+		
+		If[
+			failRequirements[bundle["ATensors"], {"AChrisUdd"}],
+				Return["Missing Tensors/AChrisUdd"]
+		];
+		
+		coord = bundle["coord"];
+		Dim = Length[coord];
+		Agdd = bundle["ATensors","Agdd"];
+		AChrisUdd = bundle["ATensors","AChrisUdd"];
+		gdd[i_,j_] := ATensorToTensor2sym[Agdd, {i,j}];
+		gddArray = SparseArray[Array[gdd,{Dim,Dim}]];
+		
+		ChrisUdd[i_,j_,k_] := ATensorToTensor3symLast[AChrisUdd, {i,j,k}]; 
+		ChrisUddArrayToDer = Array[ChrisUdd, {Dim, Dim, Dim}];
+		ChrisUddArray = SparseArray[ChrisUddArrayToDer];
+		dChrisUddArray = SparseArray[Transpose[Table[D[ChrisUddArrayToDer,coord[[i]]],{i,Dim}],{3,1,4,2}]];
+		ChrisChrisUdddArray = SparseArray[Transpose[ChrisUddArray . ChrisUddArray,{1,3,4,2}]];
+		
+		RiemUdddArray = dChrisUddArray - Transpose[dChrisUddArray, {1,2,4,3}] + ChrisChrisUdddArray - Transpose[ChrisChrisUdddArray, {1,2,4,3}];
+		
+		RiemddddArray = gddArray . RiemUdddArray;
+		
+		seen = <||>;
+		list = {};
+		Print[Dimensions[RiemUdddArray]];
+		Do[
+			If[KeyExistsQ[seen, {k, l, i, j}], Continue[]];
+			AppendTo[list, {i, j, k, l} -> RiemddddArray[[i, j, k, l]]];
+			seen[{i, j, k, l}] = True;
+			seen[{k, l, i, j}] = True;
+		,
+		{i, Dim}, {j, i + 1, Dim}, {k, Dim}, {l, k + 1, Dim}
+		];
+  
+		ARiemdddd = Association[list];
+		ARiemdddd = CleanZeros[ARiemdddd];
+		Return[ARiemdddd];
+	];
+	
+(*
+				---- Ricdd ----
+*)
+
+	
+ComputeARicdd[bundle_Association] := 
+	Module[{coord,Dim,AgUU,ARiemdddd,gUU,Rdddd,Ricdd,ARicdd,gUUArray,RddddArray },
+		
+		If[
+			failRequirements[bundle["ATensors"], {"ARiemdddd"}],
+				Return["Missing ATensors/ARiemdddd"]
+		];
+		
+		coord = bundle["coord"];
+		Dim = Length[coord];
+		AgUU = bundle["ATensors","AgUU"];
+		ARiemdddd = bundle["ATensors","ARiemdddd"];
+		gUU[i_,j_] := ATensorToTensor2sym[AgUU, {i,j}];
+		Rdddd[i_,j_,k_,l_] := ATensorToTensorRiem[ARiemdddd,{i,j,k,l}];
+		gUUArray = SparseArray[Array[gUU,{Dim,Dim}]];
+		RddddArray = SparseArray[Array[Rdddd,{Dim,Dim,Dim,Dim}]];
+		(*Ricdd[i_,j_] :=  Sum[gUU[m,n]*Rdddd[m,i,n,j],{m,Dim}, {n,Dim}];*)
+		Ricdd = Activate[TensorContract[Inactive[TensorProduct][gUUArray, RddddArray],{{1,3},{2,5}}]];
+		ARicdd = 
+			Association[
+				Table[{i, j} -> Ricdd[[i,j]],{i,Dim}, {j,i, Dim}]
+			];
+		ARicdd = CleanZeros[ARicdd];
+		Return[ARicdd];
+	];
+
+(*
+				---- RicciScalar ----
+*)
+
+ComputeARicciScalar[bundle_Association] := 
+	Module[{coord,Dim,AgUU,ARiemdddd,gUU,Rdddd,Ricdd,ARicdd,RicciScalar},
+		
+		If[
+			failRequirements[bundle["ATensors"], {"ARicdd"}],
+				Return["Missing ATensors/ARicdd"]
+		];
+		
+		coord = bundle["coord"];
+		Dim = Length[coord];
+		AgUU = bundle["ATensors","AgUU"];
+		ARicdd = bundle["ATensors","ARicdd"];
+		gUU[i_,j_] := ATensorToTensor2sym[AgUU, {i,j}];
+		Ricdd[i_,j_] := ATensorToTensor2sym[ARicdd,{i,j}];
+		RicciScalar = Sum[gUU[i,j]*Ricdd[i,j],{i,Dim},{j,Dim}];
+		Return[RicciScalar];
+	];
+	
+
+(*
+		    ------------------------------------
+			---       Orcheta Director       ---
+			------------------------------------
+*)
+
+ComputeBundleTensors[bundleIN_Association, level_: "Rdddd", simp_:Identity] := 
+Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
+	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar},
+	
+	bundle = bundleIN;
+	ATensors = Lookup[bundle, "ATensors", <||>];
+
+	(* --- Check what is missing --- *)
+	needMetric   = Not[KeyExistsQ[ATensors, "Agdd"]] || Not[KeyExistsQ[ATensors, "AgUU"]];
+	needChris    = Not[KeyExistsQ[ATensors, "AChrisUdd"]] && MemberQ[{"RicciScalar","ChrisUdd", "Rdddd", "Rdd"}, level];
+	needRiemann  = Not[KeyExistsQ[ATensors, "ARiemdddd"]] && MemberQ[{"RicciScalar","Rdddd", "Rdd"}, level];
+	needRicci    = Not[KeyExistsQ[ATensors, "ARicdd"]] && MemberQ[{"RicciScalar","Rdd"}, level];
+	needRicciScalar = Not[KeyExistsQ[ATensors, "ARicciScalar"]] && MemberQ[{"RicciScalar"}, level];
+	
+	(* --- Metric --- *)
+	If[needMetric,
+		Print["** Computing metric"];
+		AgddgUU = ComputeAgddAgUU[bundle];
+		Agdd = Map[simp, AgddgUU["Agdd"]];
+		AgUU = Map[simp, AgddgUU["AgUU"]];
+		ATensors = Join[ATensors, <|"Agdd" -> Agdd, "AgUU" -> AgUU|>];
+		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+	];
+	
+	If[level === "metric", Return[bundle]];
+	
+	(* --- Christoffel --- *)
+	If[needChris,
+		Print["** Computing Christoffel"];
+		AChrisUdd = ComputeAChrisUdd[bundle];
+		AChrisUdd = Map[simp, AChrisUdd];
+		ATensors = AssociateTo[ATensors, "AChrisUdd" -> AChrisUdd];
+		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+	];
+
+	If[level === "ChrisUdd", Return[bundle]];
+
+	(* --- Riemann --- *)
+	If[needRiemann,
+		Print["** Computing Riemann"];
+		ARiemdddd = ComputeARiemdddd[bundle];
+		Print["    -Simplifying"];
+		ARiemdddd = Map[simp, ARiemdddd];
+		ATensors = AssociateTo[ATensors, "ARiemdddd" -> ARiemdddd];
+		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+	];
+	
+	If[level === "Rdddd", Return[bundle]];
+	
+	(* --- Ricci --- *)
+	If[needRicci,
+		Print["** Computing Ricci tensor"];
+		ARicdd = ComputeARicdd[bundle];
+		ARicdd = Map[simp, ARicdd];
+		ATensors = AssociateTo[ATensors, "ARicdd" -> ARicdd];
+		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+	];
+	If[level === "Rdd", Return[bundle]];
+	
+	(* --- RicciScalar --- *)
+	If[needRicciScalar,
+		Print["** Computing RicciScalar"];
+		RicciScalar = simp[ComputeARicciScalar[bundle]];
+		ATensors = AssociateTo[ATensors, "ARicciScalar" -> RicciScalar];
+		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+	];
+	
+	If[level === "RicciScalar", Return[bundle]];
+
+];
+
+(*
+    ---- "Conneting with previous notation" ----
+*)
+
+NewComputeRdd[bundleIN_Association, simp_:Identity] := 
+	Module[{bundle,ARicdd, Ricdd, Dim, Rdd},
+		bundle = bundleIN;
+		Dim = Length[bundle["coord"]];
+		bundle = ComputeBundleTensors[bundle, "Rdd", simp];
+		ARicdd = bundle["ATensors", "ARicdd"];
+		Ricdd[i_,j_] := ATensorToTensor2sym[ARicdd, {i, j}];
+		Rdd = Array[Ricdd, {Dim,Dim}];
+		Return[{Rdd,bundle}];
+	]
+
+Clear[BuildHodge];
+BuildHodge[bundleIN_Association, simp_:Simplify] := 
+	Module[{gdd,sqrtdetg,needMetric,ATensors,bundle,AgddgUU,Agdd,AgUU,Dim,gddMap,
+		gUU,gUUMap,coord},
+		bundle = bundleIN;
+		coord = bundle["coord"];
+		Dim = Length[coord];
+		ATensors = Lookup[bundle, "ATensors", <||>];
+	
+		needMetric   = Not[KeyExistsQ[ATensors, "Agdd"]] || Not[KeyExistsQ[ATensors, "AgUU"]];
+		If[needMetric,
+				bundle = ComputeBundleTensors[bundle, "metric", simp]
+		];
+		Agdd = Map[Simplify, bundle["ATensors","Agdd"]];
+		AgUU = Map[Simplify, bundle["ATensors","AgUU"]];
+		gddMap[i_,j_] := ATensorToTensor2sym[Agdd,{i,j}];
+		gUUMap[i_,j_] := ATensorToTensor2sym[AgUU,{i,j}];
+		gdd = Array[gddMap,{Dim,Dim}];
+		gUU = Array[gUUMap,{Dim,Dim}];
+		sqrtdetg = Sqrt[-Det[gdd]];
+		If[KeyExistsQ[bundle, "assum"],
+				sqrtdetg = Simplify[sqrtdetg,bundle["assum"]],
+					sqrtdetg = Simplify[sqrtdetg]
+		];
+		Return[Function[{X}, 
+			MyHStar[X, simp, {gdd, coord, gUU, sqrtdetg}]
+			]];
+	];
