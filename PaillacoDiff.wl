@@ -247,15 +247,43 @@ prodGamSig[X1_,X2_]:=
 
 Clear[Extractor];
 Extractor[F3_List,y_]:=Extractor[#,y]&/@F3;
-Extractor[x__,oneform_]:=
+
+Extractor[x__,oneform_, side_:"right"]:=
 Module[{listx,listxref,killz},
-	killz[y__,KK_]:=
-	Module[{pos},pos=Flatten[Position[{y},KK]];If[pos==={},Return[0]];
-		Return[(Wedge@@DeleteCases[{y},KK])*(-1)^(Length[{y}]-pos)]
-		];
-	listx = If[Head[x]===Plus, List@@x,{x}];
+	
+	killz[pform__,form_]:=
+		Module[{pos, signJumpRight, signJumpLeft},
+			pos = Flatten[Position[{pform},form]];
+			If[pos==={},
+				Return[0]
+			];
+			
+			signJumpRight = (-1)^(Length[{pform}]-pos);
+			signJumpLeft = (-1)^(pos-1);
+			
+			Which[
+			side==="right",
+				Return[(Wedge@@DeleteCases[{pform},form])*signJumpRight],
+			side==="left",	
+				Return[(Wedge@@DeleteCases[{pform},form])*signJumpLeft],
+			True,
+				Print["pick side for the extraction: left or right. right by default"]
+				Return[Apply[Wedge,pform]]
+			];
+			];
+	
+	listx = 
+		If[Head[x]===Plus,
+			List@@x,
+				{x}];
+	
 	listxref = Select[listx,(!FreeQ[#,oneform])&];
-	Return[Plus@@Flatten[#/.Wedge[y__]:>killz[y,oneform]/.oneform->1&/@listxref]];
+	
+	Return[
+		Plus@@Flatten[
+			Map[#/.Wedge[y__] :> killz[y,oneform]/.oneform -> 1&, listxref]
+		]
+	];
 	];
 Extractor::usage="Given a polyform F = F1+ F2\[Wedge]A,  with A a 1-form,  Extractor[F,A] returns F2.";
 
@@ -1263,7 +1291,7 @@ ComputeARicciScalar[bundle_Association] :=
 
 (*
 		    ------------------------------------
-			---       Orcheta Director       ---
+			---       Orchestra Director       ---
 			------------------------------------
 *)
 
