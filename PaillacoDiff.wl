@@ -7,7 +7,46 @@ So I want to thank the author of RGTC package for keeping it open source.
 Also I thank Ruggero Noris and Stefano Maurelli the code and 
 for poiting my out issues and helped me to improve the code.
 "
-(* --------- Form Degree --------- *)
+
+(*
+The code is organized as follows:
+
+1) Form manipulation: 
+	-FormDegree
+	-Wedge
+	-d
+	-PolyFormQ, etc.
+
+2) Gamma and Sigma matrices: 
+	-GamWeight
+	-GamQ
+	-CenterDot
+	-simpGamma
+	-prodGamSig, etc.
+
+3) Tensor algebra and contractions: 
+	-TensorProduct
+	-Extractor
+	-coordcontraction
+	-RaiseIndices.
+
+4) Hodge star and related operations: 
+	-Hstar
+	-MyHStar
+	-MyHStarE
+	-DNAofForm
+	-SparseFromDNA, etc.
+
+5) Riemannian geometry tools: DiffToMatrix, Computegdd, ComputeChrisUdd, ComputeRdd.
+
+6) Utilities: FormsToMatrix, DNAtoMatrix, DNAtoForms.
+
+
+	Section 1:  -FormDegree, GamQ, Wedge, d, PolyFormQ
+
+	--------- Form Degree --------- 
+
+*)
 
 ClearAll[FormDegree]
 FormDegree[d[x_]]:=1+FormDegree[x];
@@ -62,7 +101,7 @@ If[Dimensions[A]!=Dimensions[B],Return[Print["Incompatible matrix dimensions for
 matrixdimension=Dimensions[A][[1]];
 Table[Sum[Wedge[A[[ii,kk]],B[[kk,jj]]],{kk,matrixdimension}],{ii,matrixdimension},{jj,matrixdimension}]]
 
-(*====== Exterior derivative ======*)
+(*====== Exterior derivative (d) ======*)
 
 SetAttributes[d,{Listable}];
 d[x_Wedge/;Length@x===2] := Wedge[d[First[x]],Last[x]]+(-1)^FormDegree[First[x]]*Wedge[First[x],d[Last[x]]];
@@ -152,11 +191,18 @@ simpGamma[exp_]:=Module[{auxgamsimp,outputlist,collectedexpression},
 
 d[\[Sigma][i_?IntegerQ]]:=0;d[id2]=0;
 
-\[Sigma]rules={\[Sigma][j_?IntegerQ] . \[Sigma][j_?IntegerQ]:>id2,
-	Dot[id2,X_]:>X,Dot[X_,id2]:>X,
-	id2 . id2:>id2(*,
-	\[Sigma][i_?IntegerQ].\[Sigma][j_?IntegerQ]:>\[Sigma][j].\[Sigma][i]/;i>j *),\[Sigma][1] . \[Sigma][2]:>I \[Sigma][3],\[Sigma][2] . \[Sigma][3]:>I \[Sigma][1],\[Sigma][1] . \[Sigma][3]:>-I \[Sigma][2],
-	\[Sigma][2] . \[Sigma][1]:>-I \[Sigma][3],\[Sigma][3] . \[Sigma][2]:>-I \[Sigma][1],\[Sigma][3] . \[Sigma][1]:>I \[Sigma][2]}
+\[Sigma]rules = 
+	{
+		\[Sigma][j_?IntegerQ] . \[Sigma][j_?IntegerQ]:>id2,
+		Dot[id2,X_]:>X,Dot[X_,id2]:>X,
+		id2 . id2:>id2,
+		\[Sigma][1] . \[Sigma][2]:>I \[Sigma][3],
+		\[Sigma][2] . \[Sigma][3]:>I \[Sigma][1],
+		\[Sigma][1] . \[Sigma][3]:>-I \[Sigma][2],
+		\[Sigma][2] . \[Sigma][1]:>-I \[Sigma][3],
+		\[Sigma][3] . \[Sigma][2]:>-I \[Sigma][1],
+		\[Sigma][3] . \[Sigma][1]:>I \[Sigma][2]
+		};
 	
 (*   ----- simpGam2 ----*)
 Clear[simpGam2];
@@ -616,7 +662,11 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 ];
 
-(*   Hstar  *)
+
+
+(*  ======== Hstar ========= *)
+
+
 Clear[Hstar];
 Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, simp_:Identity] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
@@ -670,9 +720,6 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, si
 		Return[starF]
 	];
 
-
-
-_
 
 
 Errorcoord[] := Print[Style["Coordinates not defined. ",Red,14], "The code requiers a global variabled called ",
@@ -850,9 +897,6 @@ Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimi
 HStarT[X_]:=(-1)^(FormDegree[X]*(Dim-FormDegree[X]))*MyHStar[X];
 
 
-
-
-
 (*====== Hodge star in the vielbein basis ======*)
 
 ClearAll[MyHStarE];
@@ -897,8 +941,8 @@ DiffToMatrix[themetric_,coordIn_:coord]:=
 			]
 		,{iiinx,Dimint},{jjinx,Dimint}]
 	];
-
-
+	
+	
 Computegdd[bundle_Association] := 
 	Module[{gdd, sqrtdetg, update, copybundle},
 		If[
@@ -1096,8 +1140,9 @@ PrintIndices["\[PartialD]",{dn},{"\[Mu]"}],PrintIndices["\[CapitalGamma]",{up,dn
 PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Mu]","\[Nu]"}],"-",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Mu]","\[Lambda]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Rho]","\[Nu]"}]}];
 $defRicciScalar=
 Row[{"R"," = ",PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}],PrintIndices["g",{up,up},{"\[Mu]","\[Nu]"}]}];
-
-
+	
+	
+	
 (*==========================================================================================================================================*)
 
 (*
