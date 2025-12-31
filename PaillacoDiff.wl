@@ -789,8 +789,9 @@ Module[{DNAofX,DNAofHStarX,coordint,Dimint,sqrtdetgint},
 		];
 	If[
 	type==="DNA",
-		DNAofX=X,DNAofX=DNAofMatrix[X]];
-		DNAofHStarX = 
+		DNAofX=X,
+			DNAofX=DNAofMatrix[X]];
+	DNAofHStarX = 
 		Table[{sqrtdetgint*DNAofX[[JJinx,1]]*Signature[{Sequence@@DNAofX[[JJinx,2]],Sequence@@Complement[Range[Dimint],DNAofX[[JJinx,2]]]}]
 		,Complement[Range[Dimint],DNAofX[[JJinx,2]]]}
 		,{JJinx,Length@DNAofX}];
@@ -898,7 +899,6 @@ HStarT[X_]:=(-1)^(FormDegree[X]*(Dim-FormDegree[X]))*MyHStar[X];
 
 
 (*====== Hodge star in the vielbein basis ======*)
-
 ClearAll[MyHStarE];
 
 MyHStarE[X_List,simp_:Identity,gddcoord_:{gdd,coord}]:=MyHStarE/@X;
@@ -912,7 +912,7 @@ Module[{formdegree,DNA,lengthDNA,func\[Eta],mapindices,relevanmatrix\[Eta],signi
 	formdegree=FormDegree[X]; 
 	If[
 	formdegree===0,
-		Return[Wedge@@(e/@Range[Dim])]
+		Return[X*(Wedge@@(e/@Range[Dim]))]
 	];
 	DNA=DNAofForm[X];
 	lengthDNA=Length[DNA];
