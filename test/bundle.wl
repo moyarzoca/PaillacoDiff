@@ -1,8 +1,5 @@
 (* ::Package:: *)
 
-Quit
-
-
 Get["/home/marcelo/src/PaillacoDiff/PaillacoDiff.wl"];
 Print["[ Testing ]
     PaiComputeBundleTensors -> PaiComputegddAgUU
@@ -41,8 +38,11 @@ Print["[ OK ]   RicciScalar Computed"];
 
 Print["\nSchwarzschild?\n"]
 
-bool = Simplify[bundle["ATensors","ARicciScalar"]] === 0;
+bool = Simplify[bundle["Tensors","RicciScalar"]] === 0;
 Print["[ "<>ToString[bool]<>" ]   RicciScalar"];
 
-bool = CleanZeros[Association[Simplify[Normal[bundle["ATensors", "ARicdd"]]]]]===<||>;
+bool = CleanZeros[Association[Simplify[Normal[bundle["Tensors", "Rdd"]]]]]===<||>;
 Print["[ "<>ToString[bool]<>" ]   Rdd"];
+
+
+

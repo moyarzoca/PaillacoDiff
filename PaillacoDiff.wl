@@ -1196,7 +1196,7 @@ failRequirements[bundle_Association, req_List] :=
 				---- Metric ----
 *)
 
-PaiComputegddAgUU[bundle_Association] := 
+PaiComputeMetric[bundle_Association] := 
 	Module[{Dim,gdd,Agdd,gUU,AgUU,buildSymmetric2},
 		Dim = Length[bundle["coord"]];
 		gdd = DiffToMatrix[bundle["ds2"], bundle["coord"]];
@@ -1215,7 +1215,7 @@ PaiComputegddAgUU[bundle_Association] :=
 		Agdd = KeySelect[Agdd, Agdd[#] =!= 0 &];
 		AgUU = KeySelect[AgUU, AgUU[#] =!= 0 &];
 		
-		Return[<|"Agdd" -> Agdd, "AgUU" -> AgUU|>];
+		Return[<|"gdd" -> Agdd, "gUU" -> AgUU|>];
 	];
 
 (*
@@ -1227,8 +1227,8 @@ PaiComputeChrisUdd[bundle_Association] :=
 		
 		coord = bundle["coord"];
 		Dim = Length[coord];
-		Agdd = bundle["ATensors","Agdd"];
-		AgUU = bundle["ATensors","AgUU"];
+		Agdd = bundle["Tensors","gdd"];
+		AgUU = bundle["Tensors","gUU"];
 		gdd[i_,j_] := ATensorToTensor2sym[Agdd, {i,j}];
 		gUU[i_,j_] := ATensorToTensor2sym[AgUU, {i,j}];
 		
@@ -1251,19 +1251,19 @@ PaiComputeChrisUdd[bundle_Association] :=
 				---- Riemdddd ----
 *)
 
-PaiComputeRiemdddd[bundle_Association] := 
+PaiComputeRdddd[bundle_Association] := 
 	Module[{coord,Dim,AChrisUdd, ChrisUdd, dChrisUdd,ChrisChrisUddd,RiemUddd,Agdd,gdd, Riemdddd,seen,list, 
 			ARiemdddd,ChrisUddArray,dChrisUddArray,RiemUdddArray,ChrisChrisUdddArray,gddArray,RiemddddArray,ChrisUddArrayToDer},
 		
 		If[
-			failRequirements[bundle["ATensors"], {"AChrisUdd"}],
+			failRequirements[bundle["Tensors"], {"ChrisUdd"}],
 				Return["Missing Tensors/AChrisUdd"]
 		];
 		
 		coord = bundle["coord"];
 		Dim = Length[coord];
-		Agdd = bundle["ATensors","Agdd"];
-		AChrisUdd = bundle["ATensors","AChrisUdd"];
+		Agdd = bundle["Tensors","gdd"];
+		AChrisUdd = bundle["Tensors","ChrisUdd"];
 		gdd[i_,j_] := ATensorToTensor2sym[Agdd, {i,j}];
 		gddArray = SparseArray[Array[gdd,{Dim,Dim}]];
 		
@@ -1299,23 +1299,22 @@ PaiComputeRiemdddd[bundle_Association] :=
 *)
 
 	
-PaiComputeRicdd[bundle_Association] := 
+PaiComputeRdd[bundle_Association] := 
 	Module[{coord,Dim,AgUU,ARiemdddd,gUU,Rdddd,Ricdd,ARicdd,gUUArray,RddddArray },
 		
 		If[
-			failRequirements[bundle["ATensors"], {"ARiemdddd"}],
-				Return["Missing ATensors/ARiemdddd"]
+			failRequirements[bundle["Tensors"], {"Rdddd"}],
+				Return["Missing Tensors/Rdddd"]
 		];
 		
 		coord = bundle["coord"];
 		Dim = Length[coord];
-		AgUU = bundle["ATensors","AgUU"];
-		ARiemdddd = bundle["ATensors","ARiemdddd"];
+		AgUU = bundle["Tensors","gUU"];
+		ARiemdddd = bundle["Tensors","Rdddd"];
 		gUU[i_,j_] := ATensorToTensor2sym[AgUU, {i,j}];
 		Rdddd[i_,j_,k_,l_] := ATensorToTensorRiem[ARiemdddd,{i,j,k,l}];
 		gUUArray = SparseArray[Array[gUU,{Dim,Dim}]];
 		RddddArray = SparseArray[Array[Rdddd,{Dim,Dim,Dim,Dim}]];
-		(*Ricdd[i_,j_] :=  Sum[gUU[m,n]*Rdddd[m,i,n,j],{m,Dim}, {n,Dim}];*)
 		Ricdd = Activate[TensorContract[Inactive[TensorProduct][gUUArray, RddddArray],{{1,3},{2,5}}]];
 		ARicdd = 
 			Association[
@@ -1333,14 +1332,14 @@ PaiComputeRicciScalar[bundle_Association] :=
 	Module[{coord,Dim,AgUU,ARiemdddd,gUU,Rdddd,Ricdd,ARicdd,RicciScalar},
 		
 		If[
-			failRequirements[bundle["ATensors"], {"ARicdd"}],
-				Return["Missing ATensors/ARicdd"]
+			failRequirements[bundle["Tensors"], {"Rdd"}],
+				Return["Missing Tensors/Rdd"]
 		];
 		
 		coord = bundle["coord"];
 		Dim = Length[coord];
-		AgUU = bundle["ATensors","AgUU"];
-		ARicdd = bundle["ATensors","ARicdd"];
+		AgUU = bundle["Tensors","gUU"];
+		ARicdd = bundle["Tensors","Rdd"];
 		gUU[i_,j_] := ATensorToTensor2sym[AgUU, {i,j}];
 		Ricdd[i_,j_] := ATensorToTensor2sym[ARicdd,{i,j}];
 		RicciScalar = Sum[gUU[i,j]*Ricdd[i,j],{i,Dim},{j,Dim}];
@@ -1366,23 +1365,23 @@ Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar},
 	
 	bundle = bundleIN;
-	ATensors = Lookup[bundle, "ATensors", <||>];
+	ATensors = Lookup[bundle, "Tensors", <||>];
 
 	(* --- Check what is missing --- *)
-	needMetric   = Not[KeyExistsQ[ATensors, "Agdd"]] || Not[KeyExistsQ[ATensors, "AgUU"]];
-	needChris    = Not[KeyExistsQ[ATensors, "AChrisUdd"]] && MemberQ[{"RicciScalar","ChrisUdd", "Rdddd", "Rdd"}, level];
-	needRiemann  = Not[KeyExistsQ[ATensors, "ARiemdddd"]] && MemberQ[{"RicciScalar","Rdddd", "Rdd"}, level];
-	needRicci    = Not[KeyExistsQ[ATensors, "ARicdd"]] && MemberQ[{"RicciScalar","Rdd"}, level];
-	needRicciScalar = Not[KeyExistsQ[ATensors, "ARicciScalar"]] && MemberQ[{"RicciScalar"}, level];
+	needMetric   = Not[KeyExistsQ[ATensors, "gdd"]] || Not[KeyExistsQ[ATensors, "gUU"]];
+	needChris    = Not[KeyExistsQ[ATensors, "ChrisUdd"]] && MemberQ[{"RicciScalar","ChrisUdd", "Rdddd", "Rdd"}, level];
+	needRiemann  = Not[KeyExistsQ[ATensors, "Rdddd"]] && MemberQ[{"RicciScalar","Rdddd", "Rdd"}, level];
+	needRicci    = Not[KeyExistsQ[ATensors, "Rdd"]] && MemberQ[{"RicciScalar","Rdd"}, level];
+	needRicciScalar = Not[KeyExistsQ[ATensors, "RicciScalar"]] && MemberQ[{"RicciScalar"}, level];
 	
 	(* --- Metric --- *)
 	If[needMetric,
 		Print["** Computing metric"];
-		AgddgUU = PaiComputegddAgUU[bundle];
-		Agdd = Map[simp, AgddgUU["Agdd"]];
-		AgUU = Map[simp, AgddgUU["AgUU"]];
-		ATensors = Join[ATensors, <|"Agdd" -> Agdd, "AgUU" -> AgUU|>];
-		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+		AgddgUU = PaiComputeMetric[bundle];
+		Agdd = Map[simp, AgddgUU["gdd"]];
+		AgUU = Map[simp, AgddgUU["gUU"]];
+		ATensors = Join[ATensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
+		bundle = AssociateTo[bundle, "Tensors" -> ATensors];
 	];
 	
 	If[level === "metric", Return[bundle]];
@@ -1392,8 +1391,8 @@ Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 		Print["** Computing Christoffel"];
 		AChrisUdd = PaiComputeChrisUdd[bundle];
 		AChrisUdd = Map[simp, AChrisUdd];
-		ATensors = AssociateTo[ATensors, "AChrisUdd" -> AChrisUdd];
-		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+		ATensors = AssociateTo[ATensors, "ChrisUdd" -> AChrisUdd];
+		bundle = AssociateTo[bundle, "Tensors" -> ATensors];
 	];
 
 	If[level === "ChrisUdd", Return[bundle]];
@@ -1401,10 +1400,10 @@ Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	(* --- Riemann --- *)
 	If[needRiemann,
 		Print["** Computing Riemann"];
-		ARiemdddd = PaiComputeRiemdddd[bundle];
+		ARiemdddd = PaiComputeRdddd[bundle];
 		ARiemdddd = Map[simp, ARiemdddd];
-		ATensors = AssociateTo[ATensors, "ARiemdddd" -> ARiemdddd];
-		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+		ATensors = AssociateTo[ATensors, "Rdddd" -> ARiemdddd];
+		bundle = AssociateTo[bundle, "Tensors" -> ATensors];
 	];
 	
 	If[level === "Rdddd", Return[bundle]];
@@ -1412,10 +1411,10 @@ Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	(* --- Ricci --- *)
 	If[needRicci,
 		Print["** Computing Ricci tensor"];
-		ARicdd = PaiComputeRicdd[bundle];
+		ARicdd = PaiComputeRdd[bundle];
 		ARicdd = Map[simp, ARicdd];
-		ATensors = AssociateTo[ATensors, "ARicdd" -> ARicdd];
-		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+		ATensors = AssociateTo[ATensors, "Rdd" -> ARicdd];
+		bundle = AssociateTo[bundle, "Tensors" -> ATensors];
 	];
 	If[level === "Rdd", Return[bundle]];
 	
@@ -1423,8 +1422,8 @@ Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	If[needRicciScalar,
 		Print["** Computing RicciScalar"];
 		RicciScalar = simp[PaiComputeRicciScalar[bundle]];
-		ATensors = AssociateTo[ATensors, "ARicciScalar" -> RicciScalar];
-		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
+		ATensors = AssociateTo[ATensors, "RicciScalar" -> RicciScalar];
+		bundle = AssociateTo[bundle, "Tensors" -> ATensors];
 	];
 	
 	If[level === "RicciScalar", Return[bundle]];
@@ -1440,7 +1439,7 @@ NewComputeRdd[bundleIN_Association, simp_:Identity] :=
 		bundle = bundleIN;
 		Dim = Length[bundle["coord"]];
 		bundle = ComputeBundleTensors[bundle, "Rdd", simp];
-		ARicdd = bundle["ATensors", "ARicdd"];
+		ARicdd = bundle["Tensors", "Rdd"];
 		Ricdd[i_,j_] := ATensorToTensor2sym[ARicdd, {i, j}];
 		Rdd = Array[Ricdd, {Dim,Dim}];
 		Return[{Rdd,bundle}];
@@ -1453,14 +1452,14 @@ BuildHodge[bundleIN_Association, simp_:Simplify] :=
 		bundle = bundleIN;
 		coord = bundle["coord"];
 		Dim = Length[coord];
-		ATensors = Lookup[bundle, "ATensors", <||>];
+		ATensors = Lookup[bundle, "Tensors", <||>];
 	
-		needMetric   = Not[KeyExistsQ[ATensors, "Agdd"]] || Not[KeyExistsQ[ATensors, "AgUU"]];
+		needMetric   = Not[KeyExistsQ[ATensors, "gdd"]] || Not[KeyExistsQ[ATensors, "gUU"]];
 		If[needMetric,
 				bundle = ComputeBundleTensors[bundle, "metric", simp]
 		];
-		Agdd = Map[Simplify, bundle["ATensors","Agdd"]];
-		AgUU = Map[Simplify, bundle["ATensors","AgUU"]];
+		Agdd = Map[simp, bundle["Tensors","gdd"]];
+		AgUU = Map[simp, bundle["Tensors","gUU"]];
 		gddMap[i_,j_] := ATensorToTensor2sym[Agdd,{i,j}];
 		gUUMap[i_,j_] := ATensorToTensor2sym[AgUU,{i,j}];
 		gdd = Array[gddMap,{Dim,Dim}];
