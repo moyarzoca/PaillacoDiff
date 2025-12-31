@@ -450,8 +450,8 @@ DNAofForm::noBaseFound =
 	
 DNAofForm /: DNAofForm[XIN_,coordIN_:Automatic] := 
 	Module[{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track},
-		If[XIN===0,
-			Return[{0}]];
+		If[FormDegree[XIN]===0,
+			Return[{XIN}]];
 		
 			Which[
 				coordIN =!= Automatic,
@@ -695,6 +695,12 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, si
 		
 		Dim = Length[coordint];
 		deg = FormDegree[Xform];
+		
+		If[
+			deg===0,
+				Return[Xform*sqrtdetgint Wedge@@(d/@coordint)]
+		];
+		
 		FformDNA = simp[DNAofForm[Xform, coordint]];
 		FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 		FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];

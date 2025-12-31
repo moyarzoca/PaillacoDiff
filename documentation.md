@@ -259,3 +259,14 @@ Tree of dependencies
 - Dependencies: `ComputeBundleTensors`, `ATensorToTensor2sym`, `MyHStar`
 - Input: simplification, bundle -> `coord`, `ATensors`
 - Output: Build a Hodge star function
+
+
+---
+
+
+![My figure](dependencies.jpg)
+
+## Test
+wolframscript -file test/ComputeGeometry.wl 
+wolframscript -file test/pForms.wl 
+
