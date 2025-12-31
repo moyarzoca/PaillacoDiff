@@ -46,13 +46,10 @@ The code is organized into the following sections:
 - `DNAtoMatrix`
 - `DNAtoForms`
 
-
-## ____________________________________________________________
-
-
 ---
 Tree of dependencies
 ---
+
 #### `Wedge`
 - Dependencies: `FormDegree`, `GamQ`
 
@@ -262,11 +259,19 @@ Tree of dependencies
 
 
 ---
+Graph of dependencies
+---
 
 
 ![My figure](dependencies.jpg)
 
 ## Test
+
+
 wolframscript -file test/ComputeGeometry.wl 
+
+
 wolframscript -file test/pForms.wl 
+
+wolframscript -file test/bundle.wl 
 

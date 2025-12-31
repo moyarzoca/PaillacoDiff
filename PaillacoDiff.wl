@@ -1279,7 +1279,7 @@ PaiComputeRiemdddd[bundle_Association] :=
 		
 		seen = <||>;
 		list = {};
-		Print[Dimensions[RiemUdddArray]];
+		
 		Do[
 			If[KeyExistsQ[seen, {k, l, i, j}], Continue[]];
 			AppendTo[list, {i, j, k, l} -> RiemddddArray[[i, j, k, l]]];
@@ -1402,7 +1402,6 @@ Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	If[needRiemann,
 		Print["** Computing Riemann"];
 		ARiemdddd = PaiComputeRiemdddd[bundle];
-		Print["    -Simplifying"];
 		ARiemdddd = Map[simp, ARiemdddd];
 		ATensors = AssociateTo[ATensors, "ARiemdddd" -> ARiemdddd];
 		bundle = AssociateTo[bundle, "ATensors" -> ATensors];
