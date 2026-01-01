@@ -17,18 +17,21 @@ bool2 = Simplify[RicciScalar]===0;
 Print[And[bool1,bool2]];
 
 Print["\n-------------------------------------------\n"]
+
+
+
 ClearAll["Global`*"];
-
-
 Get["/home/marcelo/src/PaillacoDiff/PaillacoDiff.wl"];
 Print["** Testing 
 	ComputeSpinConnection -> SetVielbein -> FormsToMatrix
 		no simplification
-"]
+"];
+
 Print["Global: 
 	coord, Dim,
 	eU, eta,
-	d[M]=0"]
+	d[M]=0"];
+	
 coord = {t,r,th,ph};
 Dim = Length[coord];
 d[M]=0;
@@ -38,10 +41,10 @@ eta[[1,1]] = -1;
 Block[{$Output = {}},
 	ComputeSpinConnection[eU, eta]
 ];
+
 Print["
 ** Checking anti-symmetry of \[Omega]dd\n 
 ", Simplify[\[Omega]dd == - Transpose[\[Omega]dd]]]
-
 
 
 

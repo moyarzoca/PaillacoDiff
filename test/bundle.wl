@@ -1,5 +1,8 @@
 (* ::Package:: *)
 
+Quit
+
+
 Get["/home/marcelo/src/PaillacoDiff/PaillacoDiff.wl"];
 Print["[ Testing ]
     PaiComputeBundleTensors -> PaiComputegddAgUU
@@ -21,19 +24,19 @@ bundle =
 		"coord" -> {t,r,th,ph}
 	|>;
 	
-bundle = PaiComputeBundleTensors[bundle, "ChrisUdd"];
+PaiComputeBundleTensors[bundle, "ChrisUdd"];
 
 Print["[ OK ]   ChrisUdd Computed"];
 
-bundle = PaiComputeBundleTensors[bundle, "Rdddd"];
+PaiComputeBundleTensors[bundle, "Rdddd"];
 
 Print["[ OK ]   Rdddd Computed"];
 
-bundle = PaiComputeBundleTensors[bundle, "Rdd"];
+PaiComputeBundleTensors[bundle, "Rdd"];
 
 Print["[ OK ]   Rdd Computed"];
 
-bundle = PaiComputeBundleTensors[bundle, "RicciScalar"];
+PaiComputeBundleTensors[bundle, "RicciScalar"];
 
 Print["[ OK ]   RicciScalar Computed"];
 
@@ -47,7 +50,7 @@ Print["[ "<>ToString[bool]<>" ]   Rdd"];
 
 hstar = BuildHodge[bundle];
 
-Print["[ OK ] BuildHodge"];
+Print["\n[ OK ] BuildHodge"];
 
 bool = Simplify[d[hstar[d[r]\[Wedge]d[t]/r^2]]] === 0;
 Print["[ "<>ToString[bool]<>" ]   Maxwell equations"];
@@ -58,3 +61,4 @@ Print["[ "<>ToString[bool]<>" ]   Hodge dual of scalar"]
 
 
 
+bundle

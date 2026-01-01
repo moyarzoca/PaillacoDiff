@@ -105,10 +105,10 @@ Tree of dependencies
 - Input: p-from, `gUU`, `sqrtdetg`, `coord`, `simplification`
 - Output: dual de hodge of the p-form
 
-#### `FormsToMatrix` (deprecated)
+#### `FormsToMatrix`
 - Dependecies: `FormDegree`, `d`
-- Input: p-form, `p`. (Global: `Dim`, `coord`)
-- Output: matryx array of the p-form
+- Input: p-form, `p`, `coord` 
+- Output: matrix array of the p-form
 
 #### `DNAofMatrix` (strange)
 - Input: matrix array of a p-form
@@ -156,10 +156,10 @@ Tree of dependencies
 - Input: metric (`ds2`), `coord`
 - Output: Matrix array of the metric.
 
-#### `ComputeMetric` (bundle)
+#### `Computegdd` (bundle)
 - Dependencies: `DiffToMatrix`
 - Input: `bundle -> ds2, coord`
-- Output: Bundle updated
+- Output: Bundle updated with new keys "gdd", "sqrtdetg"
 
 #### `ComputeChrisUdd`
 - Input: simplification, `gdd`, `coord`. (global `$chrisdef`)
