@@ -1470,6 +1470,8 @@ BuildHodge[bundleIN_Association, simp_:Simplify] :=
 					sqrtdetg = Simplify[sqrtdetg]
 		];
 		Return[Function[{X}, 
-			MyHStar[X, simp, {gdd, coord, gUU, sqrtdetg}]
+			Hstar[X, gUU, sqrtdetg, coord, simp]
 			]];
 	];
+	
+	

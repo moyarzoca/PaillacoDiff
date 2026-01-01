@@ -46,7 +46,7 @@ The code is organized into the following sections:
 - `DNAtoMatrix`
 - `DNAtoForms`
 
----
+
 Tree of dependencies
 ---
 
@@ -156,7 +156,7 @@ Tree of dependencies
 - Input: metric (`ds2`), `coord`
 - Output: Matrix array of the metric.
 
-#### `Computegdd` (bundle)
+#### `ComputeMetric` (bundle)
 - Dependencies: `DiffToMatrix`
 - Input: `bundle -> ds2, coord`
 - Output: Bundle updated
@@ -217,33 +217,33 @@ Tree of dependencies
 
 #### [ ]
 
-#### `PaiComputegddAgUU`:
+#### `PaiComputeMetric`:
 - Dependencies: `DiffToMatrix`
 - Input: bundle -> `coord`, `ds2`
-- Output: Association with `Agdd`, `AgUU`
+- Output: Association with `gdd`, `gUU`
 
 #### `PaiComputeChrisUdd`
 - Dependencies: `ATensorToTensor2sym`, `CleanZeros`
-- Input: bundle -> `coord`, `ATensors/Agdd`, `ATensors/AgUU`
+- Input: bundle -> `coord`, `ATensors/Agdd`, `Tensors/gUU`
 - Output: `AChrisUdd`
 
-##### `PaiComputeRiemandddd`
+##### `PaiComputeRdddd`
 - Dependencies: `ATensorToTensor2sym`, `ATensorToTensor3symLast`, `CleanZeros`
-- Input: bunble -> `coord`, `ATensors/AChrisUdd`
+- Input: bunble -> `coord`, `Tensors/ChrisUdd`
 - Output: `ARiemdddd`
 
-#### `PaiComputeRicdd`
+#### `PaiComputeRdd`
 - Dependencies: `ATensorToTensor2sym`, `ATensorToTensorRiem`, `CleanZeros`
-- Input: bunble -> `coord`, `ATensors/AgUU`, `ATensors/ARiemdddd`
+- Input: bunble -> `coord`, `Tensors/gUU`, `Tensors/Rdddd`
 - Output: `ARicdd`
 
 #### `PaiComputeRicciScalar`
 - Dependencies: `ATensorToTensor2sym`
-- Input: bundle -> `coord`, `ATensors/AgUU`, `ATensros/ARicdd`
+- Input: bundle -> `coord`, `Tensors/gUU`, `Tensors/Rdd`
 - Output: `RicciScalar`
 
 #### `ComputeBundleTensors`
-- Dependencies: `PaiComputegddAgUU`, `PaiComputeChrisUdd`, `PaiComputeRiemandddd`, `PaiComputeRiccdd`, `PaiComputeRicciScalar` 
+- Dependencies: `PaiComputeMetric`, `PaiComputeChrisUdd`, `PaiComputeRdddd`, `PaiComputeRdd`, `PaiComputeRicciScalar` 
 - Input: `level` (string), simplification, bundle
 - Output: bundle updated until `level`
 
@@ -253,7 +253,7 @@ Tree of dependencies
 - Output: `{Rdd, bundle}` with bundle updated
 
 #### `BuildHodge`
-- Dependencies: `ComputeBundleTensors`, `ATensorToTensor2sym`, `MyHStar`
+- Dependencies: `ComputeBundleTensors`, `ATensorToTensor2sym`, `Hstar`
 - Input: simplification, bundle -> `coord`, `ATensors`
 - Output: Build a Hodge star function
 

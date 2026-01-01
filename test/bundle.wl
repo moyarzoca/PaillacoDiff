@@ -11,6 +11,7 @@ Print["[ Testing ]
 "]
 Print["Global: 
 	bundle
+	sqrtdetg
 "]
 
 fr = 1-2*M/r;
@@ -43,6 +44,17 @@ Print["[ "<>ToString[bool]<>" ]   RicciScalar"];
 
 bool = CleanZeros[Association[Simplify[Normal[bundle["Tensors", "Rdd"]]]]]===<||>;
 Print["[ "<>ToString[bool]<>" ]   Rdd"];
+
+hstar = BuildHodge[bundle];
+
+Print["[ OK ] BuildHodge"];
+
+bool = Simplify[d[hstar[d[r]\[Wedge]d[t]/r^2]]] === 0;
+Print["[ "<>ToString[bool]<>" ]   Maxwell equations"];
+
+sqrtdetg = Sqrt[-Simplify[Det[DiffToMatrix[bundle["ds2"], bundle["coord"]]]]];
+bool = Simplify[hstar[Y] - Y*sqrtdetg*Apply[Wedge,d[bundle["coord"]]]] === 0;
+Print["[ "<>ToString[bool]<>" ]   Hodge dual of scalar"]
 
 
 
