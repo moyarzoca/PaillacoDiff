@@ -673,7 +673,7 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 ];
 
-(*  ======== Hstar ========= *)
+(*  Hstar  *)
 
 Clear[Hstar];
 Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, simp_:Identity] := 
@@ -736,9 +736,8 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, si
 
 
 
-Errorcoord[] := Print[Style["Coordinates not defined. ",Red,14], "The code requiers a global variabled called ",
-					Style[coord,Bold]," which is an array of the coordiantes."]
 Clear[FormToSparse];
+Clear[FormsToMatrix];
 FormToSparse[X_, formdegIN_:"deg", coordIN_:"coord"] :=
 Module[{coordint, Dimint, formdegint},
 	If[
@@ -759,140 +758,6 @@ Module[{coordint, Dimint, formdegint},
 ];
 
 FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"coord"] := Normal[FormToSparse[X, formdegIN, coordIN]];
-
-DNAofMatrix[X_] :=
-Module[{blockofX,LengthBlocks,nonzeroX,CoeffcientsofX},
-	nonzeroX = SparseArray[X]["NonzeroPositions"];
-	blockofX = DeleteDuplicates[Sort/@nonzeroX];
-	CoeffcientsofX = Table[X[[Sequence@@blockofX[[IIinx]]]],{IIinx,Length@blockofX}];
-	Table[{CoeffcientsofX[[IIinx]], blockofX[[IIinx]]}, {IIinx, Length@blockofX}]
-];
-
-DNAofHStarU[X_,type_:"ListOfInput",sqrtdetgcoord_:{sqrtdetg,coord}] := 
-Module[{DNAofX,DNAofHStarX,coordint,Dimint,sqrtdetgint},
-	If[
-	sqrtdetgcoord==={gdd,coord},
-		coordint=coord;
-		sqrtdetgint=sqrtdetg,
-			coordint=sqrtdetgcoord[[2]];
-			sqrtdetgint=sqrtdetgcoord[[1]]
-	];
-	Dimint=Length@coordint;
-	If[
-	ValueQ[sqrtdetgcoord[[1]]]===False,
-		Return[Print["You must declare a global variable ",Style["sqrtdetg",Bold]," which is Sqrt[-det[Subscript[g, \[Mu]\[Nu]]]]."]]
-
-		];
-	If[
-	type==="DNA",
-		DNAofX=X,
-			DNAofX=DNAofMatrix[X]];
-	DNAofHStarX = 
-		Table[{sqrtdetgint*DNAofX[[JJinx,1]]*Signature[{Sequence@@DNAofX[[JJinx,2]],Sequence@@Complement[Range[Dimint],DNAofX[[JJinx,2]]]}]
-		,Complement[Range[Dimint],DNAofX[[JJinx,2]]]}
-		,{JJinx,Length@DNAofX}];
-	Return[DNAofHStarX];
-]
-
-"The function eats a matrix with Upper indices and computes the DNA of HStar matrix";
-"The idea of the Complement[...] part is that given a non-trivial element of X, 
-which is the p-form we want to HStar, it will fill the first entries of the Levi-Civita symbol and 
-we fill the rest using Complement[Range[Dim],] function, where the first entry is the full list and 
-the second element is a subset of the list, it returns the complement.";
-
-DNAtoMatrix[DNA_]:=
-Module[{listtermsnumbers,bigmatrix,formdegree},
-	formdegree = Length[DNA[[1,2]]];
-	listtermsnumbers = Table[DNA[[IIinx,2]], {IIinx, Length@DNA}];
-	bigmatrix = ConstantArray[0,Table[Dim,formdegree]];
-	Do[
-		Do[
-			bigmatrix[[Sequence@@indicess]]=DNA[[IIinx,1]] Signature[indicess] Signature[listtermsnumbers[[IIinx]]] 
-		,{indicess,Select[Tuples[listtermsnumbers[[IIinx]],formdegree],Signature[#]!=0&]}]
-	,{IIinx, Length@DNA}];
-	Return[bigmatrix];
-];
-
-DNAtoForms[DNA_,coordIN_:coord] :=
-Module[{II,numbertocoord,coordint},
-	If[
-	coordIN===coord,
-		coordint=coord,
-			coordint=coordIN
-	];
-	numbertocoord[ii_]:=coordint[[ii]];
-	Return[Sum[DNA[[IIinx,1]]* Wedge[Sequence@@(d[numbertocoord[#]]&/@(DNA[[IIinx,2]]))],{IIinx,Length@DNA}]];
-];
-
-RaiseIndices[Xd_] :=
-Module[{degreeform},
-	degreeform=Length@Dimensions[Xd];
-	Activate@TensorContract[Inactive[TensorProduct][Xd, Sequence@@Table[gUU,{IIinx,degreeform}]],Table[{iiinx,degreeform+2*iiinx-1},{iiinx,degreeform}]]
-]
-
-(*====== HStar in the coordinates basis ======*)
-
-MyHStar[X_List,simp_:Identity,gddcoord_:{gdd,coord}]:=MyHStar/@X;
-
-MyHStar[X_,simp_:Identity,gddcoordgUUsqrt_:{gdd,coord}]:=
-Module[{formdegree,DNA,BADDNAUp,DNAUp,thetuples,auxtiempo,gUUnonZero,gUUint,Dimint,coordint,sqrtdetgint},
-	
-	If[X==0, Return[0]];
-	
-	{coordint, Dimint, gUUint, sqrtdetgint} = 
-		Which[
-			gddcoordgUUsqrt === {gdd, coord},
-				{coord, Length[coord], gUU, sqrtdetg},
-		
-			Length[gddcoordgUUsqrt] == 4,
-				{gddcoordgUUsqrt[[2]], Length[gddcoordgUUsqrt[[2]]], gddcoordgUUsqrt[[3]], gddcoordgUUsqrt[[4]]},
-		
-			True,
-				{gddcoordgUUsqrt[[2]], Length[gddcoordgUUsqrt[[2]]], Inverse[gddcoordgUUsqrt[[1]]], simp[Sqrt[-Det[gddcoordgUUsqrt[[1]]]]]}
-		];
-
-	gUUnonZero =
-		Table[
-			#[[2]]&/@Select[SparseArray[gUUint]["NonzeroPositions"],#[[1]]==iiinx&]
-		,{iiinx,Dimint}];
-
-	formdegree = FormDegree[X]; 
-
-	If[
-	formdegree===0,
-		Return[X*sqrtdetgint Wedge@@(d/@coordint)]
-	];
-	
-	DNA = DNAofForm[X,coordint];
-	auxtiempo = SessionTime[];
-	
-	thetuples = 
-		Table[
-			Select[
-				Tuples[
-					Table[
-						gUUnonZero[[Last[DNA[[IIinx]]][[kkinx]]]]
-					,{kkinx,formdegree}]
-				]
-			,Signature[#]!=0&]
-		,{IIinx,Length@DNA}];
-	
-	BADDNAUp = 
-	Flatten[
-		Table[
-			Table[
-				{First[DNA[[IIinx]]]*Product[gUUint[[Last[DNA[[IIinx]]][[llinx]],indexx[[llinx]]]],{llinx,formdegree}],indexx}
-			,{indexx,thetuples[[IIinx]]}]
-		,{IIinx,Length@DNA}]
-	,1];
-	
-	auxtiempo = SessionTime[];
-	DNAUp = DNAofForm[DNAtoForms[BADDNAUp,coordint],coordint];
-	Return[DNAtoForms[DNAofHStarU[DNAUp,"DNA",{sqrtdetgint,coordint}],coordint]];
-];
-
-HStarT[X_]:=(-1)^(FormDegree[X]*(Dim-FormDegree[X]))*MyHStar[X];
-
 
 (*====== Hodge star in the vielbein basis ======*)
 ClearAll[MyHStarE];

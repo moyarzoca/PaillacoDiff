@@ -33,25 +33,10 @@ gUU = Inverse[gdd];
 sqrtdetg = Simplify[Sqrt[-Det[gdd]]];
 
 
-bool1 = ((Simplify[d[Simplify[MyHStar[F]]]] === 0)
-	&&(Simplify[MyHStar[MyHStar[F]]+F]===0)
-	&&((MyHStar[Y]-Y*sqrtdetg*Apply[Wedge, d[coord]])===0)
-	);
-Print[ "[ ", ToString[bool1], " ]", "   MyHStar - Maxwell equations"];
-
-
 bool2 = ((Simplify[d[Simplify[Hstar[F]]]] === 0)
-	&&((Simplify[MyHStar[Hstar[F]]+F])===0)
+	&&((Simplify[Hstar[Hstar[F]]+F])===0)
 	&&((Hstar[Y]-Y*sqrtdetg*Apply[Wedge, d[coord]])===0)); 
 Print[ "[ ", ToString[bool2], " ]", "   Hstar - Maxwell equations"];
-
-
-bool3 = (
-	((MyHStar[A]-Hstar[A])===0)
-	&&(Simplify[MyHStar[F]-Hstar[F]]===0)
-	);
-Print["[ ", bool3, " ]","   They both agree"];
-
 
 
 FF = FormSquare[F];
@@ -73,7 +58,5 @@ Print["[ "<>ToString[bool]<>" ]   Array dimensions"];
 Block[{$Output = {}},ComputeRicciScalar[]];
 bool = DeleteDuplicates[Flatten[Simplify[Rdd - 1/2*RicciScalar*gdd - 1/2*(FFdd -1/4*gdd*FF)]]] === {0};
 Print["[ "<>ToString[bool]<>" ]   Einstein equation"];
-
-
 
 
