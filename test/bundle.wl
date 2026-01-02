@@ -59,6 +59,7 @@ sqrtdetg = Sqrt[-Simplify[Det[DiffToMatrix[bundle["ds2"], bundle["coord"]]]]];
 bool = Simplify[hstar[Y] - Y*sqrtdetg*Apply[Wedge,d[bundle["coord"]]]] === 0;
 Print["[ "<>ToString[bool]<>" ]   Hodge dual of scalar"]
 
+GetTensorArray[bundle,"Rdddd"];
 
 
 
