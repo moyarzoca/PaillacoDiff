@@ -1135,8 +1135,8 @@ PaiComputeChrisUdd[bundle_Association] :=
 		Dim = Length[coord];
 		Paigdd = bundle["Tensors","gdd"];
 		AgUU = bundle["Tensors","gUU"];
-		gdd[i_,j_] := PaiComponent2sym[Paigdd, {i,j}];
-		gUU[i_,j_] := PaiComponent2sym[AgUU, {i,j}];
+		gdd[i_,j_] := PaiComponent[Paigdd, {i,j}, "gdd"];
+		gUU[i_,j_] := PaiComponent[AgUU, {i,j}, "gUU"];
 		
 		dgdd[i_,j_,k_] := D[gdd[j,k],coord[[i]]];
 		dGamdd[k_,i_,j_] := 1/2*dgdd[i,j,k]+1/2*dgdd[j,i,k]-1/2*dgdd[k,i,j];
@@ -1170,10 +1170,10 @@ PaiComputeRdddd[bundle_Association] :=
 		Dim = Length[coord];
 		Agdd = bundle["Tensors","gdd"];
 		AChrisUdd = bundle["Tensors","ChrisUdd"];
-		gdd[i_,j_] := PaiComponent2sym[Agdd, {i,j}];
+		gdd[i_,j_] := PaiComponent[Agdd, {i,j}, "gdd"];
 		gddArray = SparseArray[Array[gdd,{Dim,Dim}]];
 		
-		ChrisUdd[i_,j_,k_] := PaiComponent3symLast[AChrisUdd, {i,j,k}]; 
+		ChrisUdd[i_,j_,k_] := PaiComponent[AChrisUdd, {i,j,k}, "ChrisUdd"]; 
 		ChrisUddArrayToDer = Array[ChrisUdd, {Dim, Dim, Dim}];
 		ChrisUddArray = SparseArray[ChrisUddArrayToDer];
 		dChrisUddArray = SparseArray[Transpose[Table[D[ChrisUddArrayToDer,coord[[i]]],{i,Dim}],{3,1,4,2}]];
@@ -1217,8 +1217,8 @@ PaiComputeRdd[bundle_Association] :=
 		Dim = Length[coord];
 		AgUU = bundle["Tensors","gUU"];
 		ARiemdddd = bundle["Tensors","Rdddd"];
-		gUU[i_,j_] := PaiComponent2sym[AgUU, {i,j}];
-		Rdddd[i_,j_,k_,l_] := PaiComponent4Riem[ARiemdddd,{i,j,k,l}];
+		gUU[i_,j_] := PaiComponent[AgUU, {i,j}, "gUU"];
+		Rdddd[i_,j_,k_,l_] := PaiComponent[ARiemdddd, {i, j, k, l}, "Rdddd"];
 		gUUArray = SparseArray[Array[gUU,{Dim,Dim}]];
 		RddddArray = SparseArray[Array[Rdddd,{Dim,Dim,Dim,Dim}]];
 		Ricdd = Activate[TensorContract[Inactive[TensorProduct][gUUArray, RddddArray],{{1,3},{2,5}}]];
@@ -1246,8 +1246,8 @@ PaiComputeRicciScalar[bundle_Association] :=
 		Dim = Length[coord];
 		AgUU = bundle["Tensors","gUU"];
 		ARicdd = bundle["Tensors","Rdd"];
-		gUU[i_,j_] := PaiComponent2sym[AgUU, {i,j}];
-		Ricdd[i_,j_] := PaiComponent2sym[ARicdd,{i,j}];
+		gUU[i_,j_] := PaiComponent[AgUU, {i, j}, "gUU"];
+		Ricdd[i_,j_] := PaiComponent[ARicdd,{i, j}, "Rdd"];
 		RicciScalar = Sum[gUU[i,j]*Ricdd[i,j],{i,Dim},{j,Dim}];
 		Return[RicciScalar];
 	];
@@ -1365,7 +1365,7 @@ GetArrayRdd[bundleIN_Association, simp_:Identity] :=
 		Dim = Length[bundle["coord"]];
 		PaiComputeBundleTensors[bundle, "Rdd", simp];
 		ARicdd = bundle["Tensors", "Rdd"];
-		Ricdd[i_,j_] := PaiComponent2sym[ARicdd, {i, j}];
+		Ricdd[i_,j_] := PaiComponent[ARicdd, {i, j}, "Rdd"];
 		Rdd = Array[Ricdd, {Dim,Dim}];
 		Return[Rdd];
 	];
@@ -1387,8 +1387,8 @@ BuildHodge[bundleIN_Association, simp_:Simplify] :=
 		];
 		Agdd = Map[simp, bundle["Tensors","gdd"]];
 		AgUU = Map[simp, bundle["Tensors","gUU"]];
-		gddMap[i_,j_] := PaiComponent2sym[Agdd,{i,j}];
-		gUUMap[i_,j_] := PaiComponent2sym[AgUU,{i,j}];
+		gddMap[i_,j_] := PaiComponent[Agdd, {i, j}, "gdd"];
+		gUUMap[i_,j_] := PaiComponent[AgUU, {i, j}, "gUU"];
 		gdd = Array[gddMap,{Dim,Dim}];
 		gUU = Array[gUUMap,{Dim,Dim}];
 		sqrtdetg = Sqrt[-Det[gdd]];

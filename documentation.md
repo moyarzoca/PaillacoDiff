@@ -168,17 +168,33 @@ Tree of dependencies
 - Input: Association
 - Output: The association with elements with zero value removed
 
-#### `ATensorToTensor2sym`
+#### `PaiComponent2sym`
 - Input: symmetric rank 2 Association, component `{i,j}`
 - Output: component `{i,j}`
 
-#### `ATensorToTensor3symLast`
+#### `PaiComponent3symLast`
 - Input: rank 3 Association with last two symmetric, component `{i,j,k}`
 - Output: component `{i,j,k}`
 
-#### `ATensorToTensorRiem`
+#### `PaiComponent4Riem`
 - Input: rank 4 Association with Riemann symmetries, component `{i,j,k,l}`
 - Output: component `{i,j,k,l}`
+
+#### `PaiComponent`
+- Dependencies: `PaiComponent2sym`, `PaiComponent3symLast`, `PaiComponent4Riem`
+- Input: PaiTensor, tensorName (string), component (list of integers)
+- Output: component of the PaiTensor
+
+#### `RaiseIndices`
+- Dependencies: `GetTensorArray`, `TensorProductContract`
+
+#### `GetTensorArray`
+- Dependencies: `PaiComputeBundleTensors`, `PaiComponent`
+
+#### `TensorProductContract`
+- Usage: 
+
+#### 
 
 #### `failRequirements`
 - Input: bundle, array of requirements
@@ -192,22 +208,22 @@ Tree of dependencies
 - Output: Association with `gdd`, `gUU`
 
 #### `PaiComputeChrisUdd`
-- Dependencies: `ATensorToTensor2sym`, `CleanZeros`
+- Dependencies: `PaiComponent`, `CleanZeros`
 - Input: bundle -> `coord`, `ATensors/Agdd`, `Tensors/gUU`
 - Output: `AChrisUdd`
 
 ##### `PaiComputeRdddd`
-- Dependencies: `ATensorToTensor2sym`, `ATensorToTensor3symLast`, `CleanZeros`
+- Dependencies: `PaiComponent`, `CleanZeros`
 - Input: bunble -> `coord`, `Tensors/ChrisUdd`
 - Output: `ARiemdddd`
 
 #### `PaiComputeRdd`
-- Dependencies: `ATensorToTensor2sym`, `ATensorToTensorRiem`, `CleanZeros`
+- Dependencies: `PaiComponent`, `CleanZeros`
 - Input: bunble -> `coord`, `Tensors/gUU`, `Tensors/Rdddd`
 - Output: `ARicdd`
 
 #### `PaiComputeRicciScalar`
-- Dependencies: `ATensorToTensor2sym`
+- Dependencies: `PaiComponent`
 - Input: bundle -> `coord`, `Tensors/gUU`, `Tensors/Rdd`
 - Output: `RicciScalar`
 
@@ -217,12 +233,12 @@ Tree of dependencies
 - Output: bundle updated until `level`
 
 #### `NewComputeRdd`
-- Dependencies: `ComputeBundleTensors`, `ATensorToTensor2sym`
+- Dependencies: `ComputeBundleTensors`, `PaiComponent`
 - Input: simplification, bundle -> `coord`
 - Output: `{Rdd, bundle}` with bundle updated
 
 #### `BuildHodge`
-- Dependencies: `ComputeBundleTensors`, `ATensorToTensor2sym`, `Hstar`
+- Dependencies: `ComputeBundleTensors`, `PaiComponent`, `Hstar`
 - Input: simplification, bundle -> `coord`, `ATensors`
 - Output: Build a Hodge star function
 
