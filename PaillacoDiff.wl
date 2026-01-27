@@ -1429,4 +1429,38 @@ InitVielbein[vielbeinBundle_] := Module[
 	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction}]
 	];
 
+Clear[PaiComputeSpinConnection];
+SetAttributes[PaiComputeSpinConnection, HoldFirst];
+PaiComputeSpinConnection[frameBundle_, simp_:Identity] := Module[
+	{eta, vielbein, deU, contraction, idedU, idedd, iideddU, iideddd, omegadd, symbs, Dim, evald, omegaUd},
+	frameBundle = Association[frameBundle];
+	eta = DiagonalMatrix[frameBundle["signature"]];
+	Dim = Length[frameBundle["signature"]];
+	vielbein = frameBundle["vielbein"];
+	symbs = vielbein["symbs"];
+	deU = Table[d[e]/.vielbein["eTodx"]/.vielbein["dxToe"], {e, symbs}];
+	deU = simp[deU];
+	contraction = vielbein["contraction"];
+	idedU = simp[contraction[deU]];
+	idedd = idedU . eta;
+	iideddU = contraction[idedU];
+	iideddd = iideddU . eta;
+	omegadd = 1/2*iideddd . symbs - 1/2*idedd + 1/2*Transpose[idedd];
+	AssociateTo[frameBundle, "spinConnection" -> <|"dd"->omegadd|>];
+	omegaUd = eta . omegadd;
+	evald = Table[d[symbs[[inx1]]] -> Sum[-omegaUd[[inx1, inx2]]\[Wedge]symbs[[inx2]], {inx2, Dim}], {inx1, Dim}];
+	AssociateTo[frameBundle["vielbein"], "evald"->evald];
+	];
 	
+Clear[PaiComputeCurvatureForm];
+SetAttributes[PaiComputeCurvatureForm, HoldFirst];
+PaiComputeCurvatureForm[frameBundle_, simp_: Identity] := Module[
+	{eta, omegaUd, vielbein, RRUd, omegadd},
+	eta = DiagonalMatrix[frameBundle["signature"]];
+	omegadd = frameBundle["spinConnection", "dd"];
+	omegaUd = eta . omegadd;
+	vielbein = frameBundle["vielbein"];
+	RRUd = (d[omegaUd] + omegaUd\[Wedge]omegaUd)/.vielbein["evald"]/.vielbein["dxToe"];
+	RRUd = simp[RRUd];
+	AssociateTo[frameBundle, "curvatureForm" -> <|"Ud" -> RRUd|>]
+	];
