@@ -293,10 +293,10 @@ prodGamSig[X1_,X2_]:=
 (*====== Towards contraction operator =====*)
 
 Clear[Extractor];
-Extractor[F3_List,y_]:=Extractor[#,y]&/@F3;
+(*Extractor[F3_List,y_]:=Extractor[#,y]&/@F3;*)
 
-Extractor[x__,oneform_, side_:"right"]:=
-Module[{listx,listxref,killz},
+Extractor[xIn__,oneform_, side_:"right"]:=
+Module[{listx,listxref,killz, x},
 	
 	killz[pform__,form_]:=
 		Module[{pos, signJumpRight, signJumpLeft},
@@ -318,7 +318,7 @@ Module[{listx,listxref,killz},
 				Return[Apply[Wedge,pform]]
 			];
 			];
-	
+	x = Expand[xIn];	
 	listx = 
 		If[Head[x]===Plus,
 			List@@x,
