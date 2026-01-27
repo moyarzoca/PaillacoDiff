@@ -261,3 +261,12 @@ wolframscript -file test/pForms.wl
 
 wolframscript -file test/bundle.wl 
 
+## Usage example of vielbein initialization, spin connection and curvature 2-form computation
+Let eU be the explicit form of the vielbein 1-form in the coordinate basis. "symbs" are the vielbein symbols.
+```
+vielbein = {"eU" -> eU, "symbs" -> Array[V,{10}]};
+InitVielbein[vielbein];
+formsBundle = {"vielbein" -> vielbein, "signature" -> {-1,1,1,1,1,1,1,1,1,1}};
+PaiComputeSpinConnection[formsBundle, Simplify];
+PaiComputeCurvatureForm[formsBundle, Simplify];
+```
