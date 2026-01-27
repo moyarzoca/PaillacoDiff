@@ -915,15 +915,15 @@ Module[{InitialTime,valuesimp,gddint,coordint,gUUint},
 return a (p-1)-form with a Lorentz index attaced at the beggining."
 
 SetAttributes[inP,Listable](*inP for Inned Product*)
-inP[x_,0]=0;inP[x_,y_]:=0/;FormDegree[y]===0;
-inP[x_Plus,y_]:=inP[#,y]&/@x
-inP[x_,u_*y_]:=u*inP[x,y]/;FormDegree[u]===0;
-inP[x_,y_Plus]:=inP[x,#]&/@y
-inP[x_.*e[a_],y_.*e[b_]]:=x*y*IdentityMatrix[Dim][[a,b]]
-inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]]:=x*y*(IdentityMatrix[Dim][[j,k]]*Wedge[p]-Wedge[e[k],inP[e[j],Wedge[p]]])
-Contractione[X_]:= Table[inP[e[a1111],X],{a1111,Dim}];
-ClearAll[SetVielbein]
-
+inP[x_,0] = 0;
+inP[x_,y_] := 0/;FormDegree[y]===0;
+inP[x_Plus,y_] := inP[#,y]&/@x;
+inP[x_,y_Plus] := inP[x,#]&/@y;
+inP[x_,u_*y_] := u*inP[x,y]/;FormDegree[u]===0;
+inP[x_.*e[a_],y_.*e[b_]] := x*y*KroneckerDelta[a,b];
+inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]] := x*y*(KroneckerDelta[j,k]*Wedge[p]-Wedge[e[k],inP[e[j],Wedge[p]]])
+Contractione[X_, DimIn_:Dim] := Table[inP[e[a1111],X],{a1111,DimIn}];
+ClearAll[SetVielbein];
 SetVielbein[eIN_,flatmetric_,simp_:Identity]:=
 Module[{},
 	ClearAll[\[Eta]dd,\[Eta]UU,eTodx,dxToe,eBasis,gdd,gUU,eamuUd,eamudU];
@@ -1017,14 +1017,14 @@ TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContrac
 
 RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
 	Module[{gUU, RaisePositions, rank, RaiseRelations, metricSequence, TensorUpPermuted, indexPermutation},
-	RaisePositions = Sort[indicesRaisePosition];
-	rank = Length[Dimensions[TensorSparsedown]];
-	RaiseRelations = Table[{RaisePositions[[n]], rank + 2*n-1}, {n, 1, Length[RaisePositions]}];
-	gUU = SparseArray[GetTensorArray[bundle, "gUU"]];
-	metricSequence = Sequence @@ ConstantArray[gUU, Length[RaisePositions]];
-	TensorUpPermuted = TensorProductContract[TensorSparsedown, metricSequence,RaiseRelations];
-	indexPermutation = Join[Complement[Range[rank], RaisePositions], RaisePositions];
-	Return[Transpose[TensorUpPermuted, indexPermutation]];
+		RaisePositions = Sort[indicesRaisePosition];
+		rank = Length[Dimensions[TensorSparsedown]];
+		RaiseRelations = Table[{RaisePositions[[n]], rank + 2*n-1}, {n, 1, Length[RaisePositions]}];
+		gUU = SparseArray[GetTensorArray[bundle, "gUU"]];
+		metricSequence = Sequence @@ ConstantArray[gUU, Length[RaisePositions]];
+		TensorUpPermuted = TensorProductContract[TensorSparsedown, metricSequence,RaiseRelations];
+		indexPermutation = Join[Complement[Range[rank], RaisePositions], RaisePositions];
+		Return[Transpose[TensorUpPermuted, indexPermutation]];
 	];
 
 SetAttributes[GetTensorArray, HoldFirst];
