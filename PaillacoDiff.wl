@@ -1381,17 +1381,16 @@ GetArrayRdd[bundleIN_Association, simp_:Identity] :=
 
 
 Clear[BuildHodge];
-BuildHodge[bundleIN_Association, simp_:Simplify] := 
-	Module[{gdd,sqrtdetg,needMetric,ATensors,bundle,AgddgUU,Agdd,AgUU,Dim,gddMap,
-		gUU,gUUMap,coord},
-		bundle = bundleIN;
+SetAttributes[BuildHodge, HoldFirst];
+BuildHodge[bundle_, simp_:Simplify] := 
+	Module[{gdd,sqrtdetg,needMetric,ATensors,AgddgUU,Agdd,AgUU,Dim,gddMap,gUU,gUUMap,coord},
 		coord = bundle["coord"];
 		Dim = Length[coord];
 		ATensors = Lookup[bundle, "Tensors", <||>];
 	
 		needMetric   = Not[KeyExistsQ[ATensors, "gdd"]] || Not[KeyExistsQ[ATensors, "gUU"]];
 		If[needMetric,
-				bundle = PaiComputeBundleTensors[bundle, "metric", simp]
+				PaiComputeBundleTensors[bundle, "metric", simp]
 		];
 		Agdd = Map[simp, bundle["Tensors","gdd"]];
 		AgUU = Map[simp, bundle["Tensors","gUU"]];
