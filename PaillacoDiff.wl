@@ -1013,6 +1013,14 @@ Row[{"R"," = ",PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}],PrintIndices["g",{up,
 
                      --- Utils ---
 *)
+
+SetAttributes[InitializeBundle, HoldFirst];
+
+InitializeBundle[bundle_] := Module[{ToClear},
+    bundle = Association[bundle];
+    Do[d[c]=0, {c, bundle["constants"]}];
+]
+
 TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContract[Inactive[TensorProduct][Tensors], contractIndices];
 
 RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
