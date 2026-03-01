@@ -1482,9 +1482,9 @@ PaiComputeSpinConnection[frameBundle_, simp_:Identity] := Module[
 	frameBundle = Association[frameBundle];
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	Dim = Length[frameBundle["signature"]];
-	vielbein = frameBundle["vielbein"];
-	symbs = vielbein["symbs"];
-	deU = Table[d[e]/.vielbein["eTodx"]/.vielbein["dxToe"], {e, symbs}];
+	vielbein = frameBundle;
+	symbs = vielbein["basis"];
+	deU = Table[d[e], {e, symbs}];
 	deU = simp[deU];
 	contraction = vielbein["contraction"];
 	idedU = simp[contraction[deU]];
@@ -1493,9 +1493,6 @@ PaiComputeSpinConnection[frameBundle_, simp_:Identity] := Module[
 	iideddd = iideddU . eta;
 	omegadd = 1/2*iideddd . symbs - 1/2*idedd + 1/2*Transpose[idedd];
 	AssociateTo[frameBundle, "spinConnection" -> <|"dd"->omegadd|>];
-	omegaUd = eta . omegadd;
-	evald = Table[d[symbs[[inx1]]] -> Sum[-omegaUd[[inx1, inx2]]\[Wedge]symbs[[inx2]], {inx2, Dim}], {inx1, Dim}];
-	AssociateTo[frameBundle["vielbein"], "evald"->evald];
 	];
 	
 Clear[PaiComputeCurvatureForm];
