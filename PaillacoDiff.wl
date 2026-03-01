@@ -443,24 +443,21 @@ DNAofForm::nocord =
 	"No coordinates provided to computed DNAofForm";
 DNAofForm::noBaseFound = 
 	"No base element found";
-	
-DNAofForm /: DNAofForm[XIN_,coordIN_:Automatic] := 
-	Module[{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track, X},
+Clear[DNAofForm];
+DNAofForm[XIN_,base_:Automatic] := Module[
+		{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track, X},
 		If[FormDegree[XIN]===0,
 			Return[{XIN}]];
 		
 			Which[
-				coordIN =!= Automatic,
-					coordint = coordIN;
-					Dimint = Length[coordint];
+				base =!= Automatic,
+					baseint = base;
+					Dimint = Length[baseint];
 					X = XIN,
 				ValueQ[coord], 
-					coordint = coord;
-					Dimint = Length[coordint];
+					baseint = d[coord];
+					Dimint = Length[baseint];
 					X = XIN,
-				ValueQ[dxToe]&&ValueQ[Dim],
-					Dimint = Dim;
-					X = XIN/.dxToe,
 				True,
 					Message[DNAofForm::nocord];
 					Return[$Failed]
@@ -470,19 +467,19 @@ DNAofForm /: DNAofForm[XIN_,coordIN_:Automatic] :=
 		Collected = 
 			Which[
 			FormDegree[X]===1,
-				Collect[Expand@X, {d[1forms_], e[num_]}],
+				Collect[Expand@X, baseint],
 			(FormDegree[X]>1)||PolyFormQ[X],
-				Collect[Expand@X, Wedge[listforms___]]
+				Collect[Expand@X, _Wedge]
 			];
 		
-		TermsXArray = 
+		formAsList = 
 			If[
 			Head[Collected] === Plus,
 				Apply[List,Collected],
 					{Collected}
 				];
 		
-		Return[Map[coeffBaseElement[#, coordint]&,TermsXArray]];
+		Return[Map[coeffBaseElement[#, baseint]&, formAsList]];
 	];
 	
 (*
