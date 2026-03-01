@@ -1449,7 +1449,7 @@ BuildHodgeVielbein[bundle_, simp_:Simplify] := Module[{basis, eta, etainv, sqrtd
 Clear[ConstructContraction];
 ConstructContraction[vielbeinBundle_] := Module[
 	{symbs, Contraction, InnerExtractor},
-	symbs = vielbeinBundle["symbs"];
+	symbs = vielbeinBundle["basis"];
 	SetAttributes[InnerExtractor, Listable];
 	InnerExtractor[X_,e_]:=Extractor[X, e, "left"];
 	Contraction[X_] := Table[InnerExtractor[X, e], {e, symbs}];
@@ -1459,10 +1459,11 @@ ConstructContraction[vielbeinBundle_] := Module[
 SetAttributes[InitVielbein, HoldFirst];
 
 InitVielbein[vielbeinBundle_] := Module[
-	{eTodx, dxToe, symbs, eU, contraction},
+	{eTodx, dxToe, symbs, eU, contraction, coord},
 	vielbeinBundle = Association[vielbeinBundle];
-	symbs = vielbeinBundle["symbs"];
+	symbs = vielbeinBundle["basis"];
 	eU = vielbeinBundle["eU"];
+	coord = vielbeinBundle["coord"];
 	Do[FormDegree[e] = 1, {e, symbs}];
 	eTodx = Normal[AssociationThread[symbs -> eU]];
 	dxToe = Solve[eU == symbs, d[coord]][[1]];
