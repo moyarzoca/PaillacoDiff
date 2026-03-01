@@ -1502,8 +1502,48 @@ PaiComputeCurvatureForm[frameBundle_, simp_: Identity] := Module[
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	omegadd = frameBundle["spinConnection", "dd"];
 	omegaUd = eta . omegadd;
-	vielbein = frameBundle["vielbein"];
-	RRUd = (d[omegaUd] + omegaUd\[Wedge]omegaUd)/.vielbein["evald"]/.vielbein["dxToe"];
+	vielbein = frameBundle;
+	RRUd = (d[omegaUd] + omegaUd\[Wedge]omegaUd)/.vielbein["dxToe"];
 	RRUd = simp[RRUd];
 	AssociateTo[frameBundle, "curvatureForm" -> <|"Ud" -> RRUd|>]
 	];
+
+Clear[PaiComputeRddddFlat];
+SetAttributes[PaiComputeRddddFlat, HoldFirst];
+PaiComputeRddddFlat[frameBundle_, simp_: Identity] := Module[
+	{eta, RUd, RddUd, RUddd},
+	eta = DiagonalMatrix[frameBundle["signature"]];
+	RUd = frameBundle["curvatureForm", "Ud"];
+	contraction = frameBundle["contraction"];
+	RddUd = -contraction[contraction[RUd]];
+	RUddd = Transpose[RddUd, {3,4,1,2}];
+	Rdddd = eta. RUddd;
+	AssociateTo[frameBundle, "FlatTensors" -> <|"Rdddd"-> Rdddd|>]
+	];
+
+Clear[PaiComputeRddFlat];
+SetAttributes[PaiComputeRddFlat, HoldFirst];
+PaiComputeRddFlat[frameBundle_, simp_: Identity] := Module[
+	{eta, etainv, Rdddd, RUddd, Rdd, FlatTensors},
+	eta = DiagonalMatrix[frameBundle["signature"]];
+	etainv = Inverse[eta];
+	Rdddd = frameBundle["FlatTensors", "Rdddd"];
+	RUddd = etainv.Rdddd;
+	Rdd = TensorContract[RUddd, {{1, 3}}];
+	AssociateTo[frameBundle["FlatTensors"], <|"Rdd"-> Rdd|>]
+	];
+
+Clear[PaiComputeRicciScalarFlat];
+SetAttributes[PaiComputeRicciScalarFlat, HoldFirst];
+PaiComputeRicciScalarFlat[frameBundle_, simp_: Identity] := Module[
+	{eta, etainv, Rdd, RUd, RicciScalar, FlatTensors},
+	eta = DiagonalMatrix[frameBundle["signature"]];
+	etainv = Inverse[eta];
+	Rdd = frameBundle["FlatTensors", "Rdd"];
+	RUd = etainv.Rdd;
+	RicciScalar = Tr[RUd];
+	AssociateTo[frameBundle["FlatTensors"], <|"RicciScalar"-> RicciScalar|>]
+	];
+
+
+
