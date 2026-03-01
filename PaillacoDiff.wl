@@ -96,11 +96,8 @@ Wedge[x_,y___,x_]:=0/;OddQ[FormDegree[x]]&&!GamQ[x]&&!GamQ[{y}];
 Wedge[y__]:=Signature[{y}]*Wedge@@Sort[{y}]/;Sort[{y}]=!={y}&&Union[FormDegree[{y}]]==={1}&&!GamQ[{y}];
 Wedge[Times[gam_,x_],y__]:=CenterDot[gam,Wedge[x,y]]/;GamQ[gam]
 
-Wedge[A_List,B_List]:=Module[{matrixdimension},
-If[Dimensions[A]!=Dimensions[B],Return[Print["Incompatible matrix dimensions for multiplication"]]];
-matrixdimension=Dimensions[A][[1]];
-Table[Sum[Wedge[A[[ii,kk]],B[[kk,jj]]],{kk,matrixdimension}],{ii,matrixdimension},{jj,matrixdimension}]]
-
+WedgeDot[a_, b_] := Inner[Wedge, a, b, Plus];
+Wedge[A_List,B_List] := WedgeDot[A,B];
 (*====== Exterior derivative (d) ======*)
 
 SetAttributes[d,{Listable}];
