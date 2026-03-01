@@ -1395,8 +1395,21 @@ GetArrayRdd[bundleIN_Association, simp_:Identity] :=
 
 Clear[BuildHodge];
 SetAttributes[BuildHodge, HoldFirst];
-BuildHodge[bundle_, simp_:Simplify] := 
-	Module[{gdd,sqrtdetg,needMetric,ATensors,AgddgUU,Agdd,AgUU,Dim,gddMap,gUU,gUUMap,coord},
+BuildHodge[bundle_, simp_:Simplify] := Module[{},
+	Which[
+	Not[KeyExistsQ[bundle, "UseVielbein"]],
+		Print["wearehere.--------------q"];
+		Return[BuildHodgeMetric[bundle, simp]],
+	bundle["UseVielbein"]===False,
+		Return[BuildHodgeMetric[bundle, simp]],
+	bundle["UseVielbein"]===True,
+		Return[BuildHodgeVielbein[bundle, simp]]
+	];
+];
+
+SetAttributes[BuildHodgeMetric, HoldFirst];
+BuildHodgeMetric[bundle_, simp_:Simplify] := 
+	Module[{gdd,sqrtdetg,needMetric,ATensors,Dim,gddMap,gUU,gUUMap,coord},
 		coord = bundle["coord"];
 		Dim = Length[coord];
 		ATensors = Lookup[bundle, "Tensors", <||>];
@@ -1405,21 +1418,29 @@ BuildHodge[bundle_, simp_:Simplify] :=
 		If[needMetric,
 				PaiComputeBundleTensors[bundle, "metric", simp]
 		];
-		Agdd = Map[simp, bundle["Tensors","gdd"]];
-		AgUU = Map[simp, bundle["Tensors","gUU"]];
-		gddMap[i_,j_] := PaiComponent[Agdd, {i, j}, "gdd"];
-		gUUMap[i_,j_] := PaiComponent[AgUU, {i, j}, "gUU"];
-		gdd = Array[gddMap,{Dim,Dim}];
-		gUU = Array[gUUMap,{Dim,Dim}];
+		gdd = GetTensorArray[bundle, "gdd"];
+		gUU = GetTensorArray[bundle, "gUU"];
 		sqrtdetg = Sqrt[-Det[gdd]];
 		If[KeyExistsQ[bundle, "assum"],
-				sqrtdetg = Simplify[sqrtdetg,bundle["assum"]],
+				sqrtdetg = Simplify[sqrtdetg, bundle["assum"]],
 					sqrtdetg = Simplify[sqrtdetg]
 		];
 		Return[Function[{X}, 
-			Hstar[X, gUU, sqrtdetg, coord, simp]
+			Hstar[X, gUU, sqrtdetg, d[coord], simp]
 			]];
 	];
+
+BuildHodgeVielbein[bundle_, simp_:Simplify] := Module[{basis, eta, etainv, sqrtdeteta},
+	basis = bundle["basis"];
+	eta = DiagonalMatrix[bundle["signature"]]; 
+	etainv = Inverse[eta];
+	sqrtdeteta = Sqrt[-Det[eta]];
+	Return[Function[{X}, 
+			Hstar[X /. bundle["dxToe"], etainv, sqrtdeteta, basis, simp]
+			]];
+
+
+]
 
 (*
 	"Vielbein Computations"
