@@ -406,32 +406,22 @@ PolyFormQ[expr_] := Module[{terms, degs,exprExpand,degsDiff},
 
 Clear[coeffBaseElement];
 
-coeffBaseElement[pform_, coord_]:=
-	Module[{baseElement, coordBasisQ,deg, coeff, 
+coeffBaseElement[pform_, base_]:=
+	Module[{baseElement,deg, coeff, 
 		baseAlong, Dim, mapcoord,baseNumb, sign},
 		
 		deg = FormDegree[pform];
-		Dim = Length[coord];
-		mapcoord = AssociationThread[coord -> Range[Dim]];
-		
-		coordBasisQ = FreeQ[pform, e[_]];
+		Dim = Length[base];
+		mapcoord = AssociationThread[base -> Range[Dim]];
 		
 		Which[
-		(deg===1)&&coordBasisQ,
-			baseElement = Cases[pform, _d, {0, Infinity}];
-			baseNumb = baseElement/.d[y_]:>{mapcoord[y]}
+		(deg===1),
+			baseElement = Cases[pform, Apply[Alternatives, base], {0, Infinity}];
+			baseNumb = baseElement /. mapcoord
 			,
-		(deg===1)&&Not[coordBasisQ],
-			baseElement = Cases[pform, _e, {0, Infinity}];
-			baseNumb = baseElement/.e[y_]:>{y}
-			,
-		(deg > 1)&&coordBasisQ,
+		(deg > 1),
 			baseElement = Cases[pform, _Wedge, {0, Infinity}];
-			baseNumb = baseElement/.Wedge[YY__]:>{YY}/.d[y_]:>{mapcoord[y]};
-			,
-		(deg > 1)&&Not[coordBasisQ],
-			baseElement = Cases[pform, _Wedge, {0, Infinity}];
-			baseNumb = baseElement/.Wedge[YY__]:>{YY}/.e[y_]:>{y};
+			baseNumb = baseElement/.Wedge[YY__]:>{YY} /. mapcoord;
 		];
 		
 		baseNumb = Flatten[baseNumb];
@@ -439,12 +429,13 @@ coeffBaseElement[pform_, coord_]:=
 		baseNumb = Sort[baseNumb];
 		
 		If[
-		Length[baseElement]===1,
-			baseAlong = baseElement[[1]];
-			coeff = Coefficient[pform, baseAlong],
-				Message[DNAofForm::noBaseFound, baseElement];
-				Return[$Failed]
+		Length[baseElement]=!=1,
+			Message[DNAofForm::noBaseFound, baseElement];
+			Return[$Failed]
 		];
+
+		baseAlong = baseElement[[1]];
+		coeff = Coefficient[pform, baseAlong];
 	Return[{sign*coeff, baseNumb}];
 	];
 
