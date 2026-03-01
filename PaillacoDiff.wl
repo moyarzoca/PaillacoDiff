@@ -562,10 +562,10 @@ RaiseAllSparse[FformSparse_SparseArray, gUU_SparseArray, formdegree_Integer] :=
 (*   FormSquare  *)
 
 Clear[FormSquare];
-FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity, coordIN_:Automatic] :=
+FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity, basisIN_:Automatic] :=
 Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
-	FformValues, FtensorValues, coordint,Dim},
+	FformValues, FtensorValues, basisint,Dim},
 	If[
 	Xform ===0,
 		Return[0]
@@ -578,14 +578,14 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	];
 	
 	If[
-	coordIN===Automatic,
-		coordint = coord,
-			coordint = coordIN
+	basisIN===Automatic,
+		basisint = d[coord],
+			basisint = basisIN
 	];
 	
 	deg = FormDegree[Xform];
-	Dim = Length[coordint];
-	FformDNA = simp[DNAofForm[Xform, coordint]];
+	Dim = Length[basisint];
+	FformDNA = simp[DNAofForm[Xform, basisint]];
 	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 	FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
 	
@@ -606,9 +606,9 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 Clear[FormSquaredd];
 FormSquaredd[0,__]:=0
 
-FormSquaredd[Xform_, gintUUinput_:Automatic, simp_:Identity, coordIN_:Automatic] :=
+FormSquaredd[Xform_, gintUUinput_:Automatic, simp_:Identity, basisIN_:Automatic] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
-	coordint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
+	basisint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
 	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
 	Xdmunu, XdUmunu, FtensorSparse},
 	
@@ -619,14 +619,14 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 	];
 	
 	If[
-	coordIN===Automatic,
-		coordint = coord,
-			coordint = coordIN
+	basisIN===Automatic,
+		basisint = d[coord],
+			basisint = basisIN
 	];
 	
-	Dim = Length[coordint];
+	Dim = Length[basisint];
 	deg = FormDegree[Xform];
-	FformDNA = simp[DNAofForm[Xform, coordint]];
+	FformDNA = simp[DNAofForm[Xform, basisint]];
 	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 	
 	seqgUU = Sequence@@Table[gintUU,{IIinx,deg-1}];
@@ -661,7 +661,7 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 (*  Hstar  *)
 
 Clear[Hstar];
-Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, simp_:Identity] := 
+Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, baseIN_:Automatic, simp_:Identity] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
 		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint},
 		If[
@@ -682,19 +682,19 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, si
 		
 		If[
 		coordIN===Automatic,
-			coordint = coord,
-				coordint = coordIN
+			baseint = d[coord],
+				baseint = baseIN
 		];
 		
-		Dim = Length[coordint];
+		Dim = Length[baseint];
 		deg = FormDegree[Xform];
 		
 		If[
 			deg===0,
-				Return[Xform*sqrtdetgint Wedge@@(d/@coordint)]
+				Return[Xform*sqrtdetgint Wedge@@(baseint)]
 		];
 		
-		FformDNA = simp[DNAofForm[Xform, coordint]];
+		FformDNA = simp[DNAofForm[Xform, baseint]];
 		FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 		FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
 		
@@ -708,12 +708,12 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, coordIN_:Automatic, si
 			Module[{complement, toepsilon},
 				complement = Complement[Range[Dim],formcomp];
 				toepsilon = Flatten[{formcomp,complement}];
-				<|"eps"->toepsilon, "basis" -> Map[coordint[[#]]&, complement]|>
+				<|"eps"->toepsilon, "basis" -> Map[baseint[[#]]&, complement]|>
 			];
 		
 		starF = 
 			sqrtdetgint*Sum[
-				FtensorDict[comp]*Signature[compToStar[comp]["eps"]]*Apply[Wedge, d[compToStar[comp]["basis"]]]
+				FtensorDict[comp]*Signature[compToStar[comp]["eps"]]*Apply[Wedge, compToStar[comp]["basis"]]
 			,
 			{comp, TensorComps}];
 		Return[starF]
@@ -739,7 +739,7 @@ Module[{coordint, Dimint, formdegint},
 			Return[SparseArray[{}, ConstantArray[Dimint, formdegIN]]]
 	];
 	formdegint = FormDegree[X];
-	Return[SparseFromDNA[DNAofForm[X, coordint], Dimint,formdegint]];
+	Return[SparseFromDNA[DNAofForm[X, d[coordint]], Dimint,formdegint]];
 ];
 
 FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"coord"] := Normal[FormToSparse[X, formdegIN, coordIN]];
