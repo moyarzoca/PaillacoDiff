@@ -1289,8 +1289,75 @@ PaiComputeBundleTensors::usage =
 	"
 ClearAll[PaiComputeBundleTensors];
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
+PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Identity] := Module[{}, 
+	Which[
+	Not[KeyExistsQ[bundleIN, "UseVielbein"]] || (bundleIN["UseVielbein"]===False),
+		PaiComputeBundleTensorsMetric[bundleIN, level, simp],
+	bundleIN["UseVielbein"]===True,
+		PaiComputeBundleTensorsVielbein[bundleIN, level, simp]
+	];
+];
 
-PaiComputeBundleTensors[bundleIN_, level_: "Rdddd", simp_:Identity] := 
+ClearAll[PaiComputeBundleTensorsVielbein];
+SetAttributes[PaiComputeBundleTensorsVielbein, HoldFirst];
+PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:Identity] := 
+Module[{bundle},	
+	bundle = bundleIN;
+	Print["we are in tensovielbein"];
+
+	(* --- Check what is missing --- *)
+	needSpinConnection   = Not[KeyExistsQ[bundle, "spinConnection"]];
+	needCurvature  = Not[KeyExistsQ[bundle, "curvatureForm"]];
+	FlatTensors = Lookup[bundle,"FlatTensor", <| |>];
+	needRdddd  = Not[KeyExistsQ[FlatTensors, "Rdddd"]];
+	needRdd = Not[KeyExistsQ[FlatTensors, "Rdd"]];
+	needRicciScalar = Not[KeyExistsQ[FlatTensors, "RicciScalar"]];
+	
+	(* --- Metric --- *)
+	If[needSpinConnection,
+		Print["** Computing spin connection"];
+		PaiComputeSpinConnection[bundle];
+		bundleIN = bundle;
+	];
+
+	If[level === "SpinConnection", Return[]];
+	
+	(* --- Christoffel --- *)
+	If[needCurvature,
+		Print["** Computing curvature 2-form"];
+		PaiComputeCurvatureForm[bundle];
+		bundleIN = bundle;
+	];
+
+	If[level === "CurvatureForm", Return[]];
+
+	If[needRdddd,
+		Print["** computing Rdddd flat"];
+		PaiComputeRddddFlat[bundle];
+		bundleIN = bundle;
+	];
+
+	If[level === "Rdddd", Return[]];
+
+	If[needRdd,
+		Print["** computing Rdd flat"];
+		PaiComputeRddFlat[bundle];
+		bundleIN = bundle;
+	];
+
+	If[level === "Rdd", Return[]];
+
+	If[needRicciScalar,
+		Print["** computing RicciScalar"];
+		PaiComputeRicciScalarFlat[bundle];
+		bundleIN = bundle;
+	];
+];
+
+
+ClearAll[PaiComputeBundleTensorsMetric];
+SetAttributes[PaiComputeBundleTensorsMetric, HoldFirst];
+PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Identity] := 
 Module[{ATensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
 	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar},
 	
