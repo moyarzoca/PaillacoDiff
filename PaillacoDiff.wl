@@ -1468,7 +1468,11 @@ InitVielbein[vielbeinBundle_] := Module[
 	eTodx = Normal[AssociationThread[symbs -> eU]];
 	dxToe = Solve[eU == symbs, d[coord]][[1]];
 	contraction = ConstructContraction[vielbeinBundle];
-	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction}]
+
+	deU = d[symbs] /. eTodx /. dxToe;
+	dictde = AssociationThread[d[symbs], deU];
+	Do[d[e] = dictde[d[e]],{e, symbs}];
+	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}]
 	];
 
 Clear[PaiComputeSpinConnection];
