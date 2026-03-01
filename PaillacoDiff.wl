@@ -559,6 +559,34 @@ RaiseAllSparse[FformSparse_SparseArray, gUU_SparseArray, formdegree_Integer] :=
 		indicesContract = Table[{inx, formdegree + 2*inx-1}, {inx, formdegree}];
 		Return[Activate[TensorContract[Inactive[TensorProduct][FformSparse,seqgUU], indicesContract]]];
 	];
+(* Build Form Square and FormSquaredd*)
+
+Clear[BuildSquaresTools];
+SetAttributes[BuildSquaresTools, HoldFirst];
+BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, dxToe},
+	Which[
+	Not[KeyExistsQ[bundle, "UseVielbein"]] || (bundle["UseVielbein"]===False),
+		PaiComputeBundleTensors[bundle, "metric", simp];
+		gUU = GetTensorArray[bundle, "gUU"];
+		basis = d[bundle["coord"]];
+		Return[
+		   <| "FormSquare" -> Function[{X}, FormSquare[X, gUU, simp,  basis]],
+		      "FormSquaredd" -> Function[{X}, FormSquaredd[X, gUU, simp,  basis]]
+		    |>
+		],
+	bundle["UseVielbein"]===True,
+		eta = DiagonalMatrix[bundle["signature"]];
+		etainv = Inverse[eta];
+		basis = bundle["basis"];
+		dxToe = bundle["dxToe"];
+		Return[
+		    <| "FormSquare" -> Function[{X}, FormSquare[X /. dxToe, etainv, simp,  basis]],
+		    "FormSquaredd" -> Function[{X}, FormSquaredd[X /. dxToe, etainv, simp,  basis]]
+		    |>
+		]
+	];
+];
+
 (*   FormSquare  *)
 
 Clear[FormSquare];
