@@ -1492,6 +1492,7 @@ BuildHodgeMetric[bundle_, simp_:Simplify] :=
 	];
 
 BuildHodgeVielbein[bundle_, simp_:Simplify] := Module[{basis, eta, etainv, sqrtdeteta},
+	Print["---- Constructing Hodge star with vielbein"];
 	basis = bundle["basis"];
 	eta = DiagonalMatrix[bundle["signature"]]; 
 	etainv = Inverse[eta];
@@ -1519,7 +1520,7 @@ ConstructContraction[vielbeinBundle_] := Module[
 
 SetAttributes[InitVielbein, HoldFirst];
 
-InitVielbein[vielbeinBundle_] := Module[
+InitVielbein[vielbeinBundle_, simp_:Simplify] := Module[
 	{eTodx, dxToe, symbs, eU, contraction, coord},
 	vielbeinBundle = Association[vielbeinBundle];
 	symbs = vielbeinBundle["basis"];
@@ -1532,7 +1533,7 @@ InitVielbein[vielbeinBundle_] := Module[
 
 	deU = d[symbs] /. eTodx /. dxToe;
 	dictde = AssociationThread[d[symbs], deU];
-	Do[d[e] = dictde[d[e]],{e, symbs}];
+	Do[d[e] = Collect[dictde[d[e]], _Wedge, simp],{e, symbs}];
 	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}]
 	];
 
