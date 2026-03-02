@@ -1301,11 +1301,9 @@ PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Identity] := Mod
 ClearAll[PaiComputeBundleTensorsVielbein];
 SetAttributes[PaiComputeBundleTensorsVielbein, HoldFirst];
 PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:Identity] := 
-Module[{bundle},	
+Module[{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicciScalar},	
 	bundle = bundleIN;
-	Print["we are in tensovielbein"];
 
-	(* --- Check what is missing --- *)
 	needSpinConnection   = Not[KeyExistsQ[bundle, "spinConnection"]];
 	needCurvature  = Not[KeyExistsQ[bundle, "curvatureForm"]];
 	FlatTensors = Lookup[bundle,"FlatTensor", <| |>];
@@ -1313,23 +1311,21 @@ Module[{bundle},
 	needRdd = Not[KeyExistsQ[FlatTensors, "Rdd"]];
 	needRicciScalar = Not[KeyExistsQ[FlatTensors, "RicciScalar"]];
 	
-	(* --- Metric --- *)
 	If[needSpinConnection,
 		Print["** Computing spin connection"];
 		PaiComputeSpinConnection[bundle];
 		bundleIN = bundle;
 	];
 
-	If[level === "SpinConnection", Return[]];
+	If[level === "spinConnection", Return[]];
 	
-	(* --- Christoffel --- *)
 	If[needCurvature,
 		Print["** Computing curvature 2-form"];
 		PaiComputeCurvatureForm[bundle];
 		bundleIN = bundle;
 	];
 
-	If[level === "CurvatureForm", Return[]];
+	If[level === "curvatureForm", Return[]];
 
 	If[needRdddd,
 		Print["** computing Rdddd flat"];
@@ -1465,7 +1461,6 @@ SetAttributes[BuildHodge, HoldFirst];
 BuildHodge[bundle_, simp_:Simplify] := Module[{},
 	Which[
 	Not[KeyExistsQ[bundle, "UseVielbein"]],
-		Print["wearehere.--------------q"];
 		Return[BuildHodgeMetric[bundle, simp]],
 	bundle["UseVielbein"]===False,
 		Return[BuildHodgeMetric[bundle, simp]],
