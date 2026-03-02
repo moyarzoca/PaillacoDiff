@@ -1275,18 +1275,19 @@ PaiComputeRicciScalar[bundle_Association] :=
 	
 
 (*
-		    ------------------------------------
-			---       Orchestra Director       ---
+		    	------------------------------------
+			---       Orchestra Director     ---
 			------------------------------------
 *)
 
 PaiComputeBundleTensors::usage = 
 	"
 	PaiComputeBundleTensors[bundle, level, simp_:]
-	levels  ->    {ChrisUdd, Rdddd, Rdd, RicciScalar}  
+	levels  ->    {metric, ChrisUdd, Rdddd, Rdd, RicciScalar}  
 	Default -> Rdddd
 	Usage   -> Mutate bundle according to level
 	"
+
 ClearAll[PaiComputeBundleTensors];
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
 PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Identity] := Module[{}, 
