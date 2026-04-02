@@ -270,3 +270,10 @@ formsBundle = {"vielbein" -> vielbein, "signature" -> {-1,1,1,1,1,1,1,1,1,1}};
 PaiComputeSpinConnection[formsBundle, Simplify];
 PaiComputeCurvatureForm[formsBundle, Simplify];
 ```
+#### InitVielbien
+Recives as only argument a list or Association. It converts to an association and lookup the following keys: "basis", "eU", "coordbasis", correspoding to the D symbols for the vielbein 1-forms, basis of the 1-form in the coordinates basis (i.e. {d[x],d[y],...}) and the explicit 1-forms as a function of the coordinate basis 1-forms.
+
+It mutates the input arrgument by adding as a key:
+- "eTodx": Rule to evaluate from vielbein basis to coordinate basis
+- "dxToe": Rule from coordinate basis to vielbein basis
+- "contraction": Contraction operator Function that allow a single argument being a differential form.

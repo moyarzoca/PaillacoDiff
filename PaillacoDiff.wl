@@ -1514,27 +1514,27 @@ ConstructContraction[vielbeinBundle_] := Module[
 	{symbs, Contraction, InnerExtractor},
 	symbs = vielbeinBundle["basis"];
 	SetAttributes[InnerExtractor, Listable];
-	InnerExtractor[X_,e_]:=Extractor[X, e, "left"];
-	Contraction[X_] := Table[InnerExtractor[X, e], {e, symbs}];
+	InnerExtractor[X_,eIter_]:=Extractor[X, eIter, "left"];
+	Contraction[X_] := Table[InnerExtractor[X, eIter], {eIter, symbs}];
 	Return[Function[{X}, Contraction[X]]]
 	];
 
 SetAttributes[InitVielbein, HoldFirst];
 
 InitVielbein[vielbeinBundle_, simp_:Simplify] := Module[
-	{eTodx, dxToe, symbs, eU, contraction, coord},
+	{eTodx, dxToe, symbs, eU, contraction, coordbasis},
 	vielbeinBundle = Association[vielbeinBundle];
 	symbs = vielbeinBundle["basis"];
 	eU = vielbeinBundle["eU"];
-	coord = vielbeinBundle["coord"];
-	Do[FormDegree[e] = 1, {e, symbs}];
+	coordbasis = vielbeinBundle["coordbasis"];
+	Do[FormDegree[eIter] = 1, {eIter, symbs}];
 	eTodx = Normal[AssociationThread[symbs -> eU]];
-	dxToe = Solve[eU == symbs, d[coord]][[1]];
+	dxToe = Solve[eU == symbs, coordbasis][[1]];
 	contraction = ConstructContraction[vielbeinBundle];
 
 	deU = d[symbs] /. eTodx /. dxToe;
 	dictde = AssociationThread[d[symbs], deU];
-	Do[d[e] = Collect[dictde[d[e]], _Wedge, simp],{e, symbs}];
+	Do[d[eIter] = Collect[dictde[d[eIter]], _Wedge, simp],{eIter, symbs}];
 	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}]
 	];
 
