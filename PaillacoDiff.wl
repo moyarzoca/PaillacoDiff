@@ -1,12 +1,101 @@
 (* ::Package:: *)
 
-"
+BeginPackage["PaillacoDiff`"]
+
+(* ---------- Public functions ---------- *)
+
+FormDegree::usage = "FormDegree[expr] returns the degree of a differential form (0 for scalars)."
+Wedge::usage = "Wedge[x, y, ...] is the exterior (wedge) product of forms."
+d::usage = "d[expr] is the exterior derivative."
+PolyFormQ::usage = "PolyFormQ[expr] tests whether expr is a sum of forms of different degrees."
+
+Gam::usage = "Gam[i] is an abstract Dirac gamma matrix."
+GamQ::usage = "GamQ[expr] tests whether expr contains gamma matrices."
+CenterDot::usage = "CenterDot[x, y] is the abstract multiplication of gamma matrices."
+simpGamma::usage = "simpGamma[expr] simplifies products of gamma matrices."
+GenerateGamma::usage = "GenerateGamma[dim, type] constructs explicit gamma matrix representations."
+CliffordMap::usage = "CliffordMap[expr] maps a form in the vielbein basis to Clifford algebra."
+
+Extractor::usage = "Extractor[F, A] extracts the coefficient of 1-form A in polyform F."
+Extractorleft::usage = "Extractorleft[F, A] extracts A from the left side of each term."
+coordcontraction::usage = "coordcontraction[X] contracts X with all coordinate 1-forms."
+
+DNAofForm::usage = "DNAofForm[X] decomposes form X into {{coeff, indices}, ...}."
+SparseFromDNA::usage = "SparseFromDNA[DNA, dim, deg] converts DNA to a SparseArray."
+DNAFromSparse::usage = "DNAFromSparse[sparse] converts a SparseArray back to DNA."
+BuildSquaresTools::usage = "BuildSquaresTools[bundle] builds FormSquare/FormSquaredd closures."
+FormSquare::usage = "FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
+FormSquaredd::usage = "FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
+Hstar::usage = "Hstar[X] computes the Hodge dual of form X."
+FormToSparse::usage = "FormToSparse[X] converts a form to a SparseArray."
+FormsToMatrix::usage = "FormsToMatrix[X] converts a form to a dense matrix."
+
+ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
+DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
+Computegdd::usage = "Computegdd[bundle] computes gdd and sqrtdetg for a bundle."
+ComputeChrisUdd::usage = "ComputeChrisUdd[] computes Christoffel symbols from global gdd, coord."
+ComputeRdd::usage = "ComputeRdd[] computes the Ricci tensor."
+ComputeRicciScalar::usage = "ComputeRicciScalar[] computes the Ricci scalar."
+SetVielbein::usage = "SetVielbein[eIN, eta] sets up the vielbein basis and defines global variables."
+ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spin connection 1-form."
+
+InitializeBundle::usage = "InitializeBundle[bundle] initialises a bundle Association."
+TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
+RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
+GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
+PaiComputeMetric::usage = "PaiComputeMetric[bundle] computes metric from bundle's ds2."
+PaiComputeChrisUdd::usage = "PaiComputeChrisUdd[bundle] computes Christoffel symbols from bundle."
+PaiComputeRdddd::usage = "PaiComputeRdddd[bundle] computes the Riemann tensor."
+PaiComputeRdd::usage = "PaiComputeRdd[bundle] computes the Ricci tensor."
+PaiComputeRicciScalar::usage = "PaiComputeRicciScalar[bundle] computes the Ricci scalar."
+PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors up to a requested level."
+
+BuildHodge::usage = "BuildHodge[bundle] builds a Hodge star function for a bundle."
+BuildHodgeMetric::usage = "BuildHodgeMetric[bundle] builds a coordinate-basis Hodge star function."
+BuildHodgeVielbein::usage = "BuildHodgeVielbein[bundle] builds a vielbein-basis Hodge star function."
+InitVielbein::usage = "InitVielbein[bundle] initialises a vielbein bundle."
+PaiComputeSpinConnection::usage = "PaiComputeSpinConnection[bundle] computes spin connection in bundle."
+PaiComputeCurvatureForm::usage = "PaiComputeCurvatureForm[bundle] computes curvature 2-form."
+PaiComputeRddddFlat::usage = "PaiComputeRddddFlat[bundle] computes Riemann in flat (vielbein) basis."
+PaiComputeRddFlat::usage = "PaiComputeRddFlat[bundle] computes Ricci in flat basis."
+PaiComputeRicciScalarFlat::usage = "PaiComputeRicciScalarFlat[bundle] computes Ricci scalar in flat basis."
+
+(* ---------- Public globals ---------- *)
+
+coord::usage = "List of coordinate variables."
+Dim::usage = "Spacetime dimension."
+gdd::usage = "Metric tensor g_{mu nu}."
+gUU::usage = "Inverse metric g^{mu nu}."
+ChrisUdd::usage = "Christoffel symbols Gamma^mu_{nu rho}."
+Rdd::usage = "Ricci tensor R_{mu nu}."
+RicciScalar::usage = "Ricci scalar R."
+sqrtdetg::usage = "Sqrt[-det(g)]."
+
+\[Eta]dd::usage = "Flat (Minkowski) metric."
+\[Eta]UU::usage = "Inverse flat metric."
+e::usage = "Vielbein basis 1-forms e^a."
+eTodx::usage = "Rule mapping e^a to e^a_mu dx^mu."
+dxToe::usage = "Rule mapping dx^mu to e^a."
+eamuUd::usage = "Vielbein matrix e^a_mu."
+eamudU::usage = "Inverse vielbein matrix e_a^mu."
+eBasis::usage = "List of vielbein basis symbols {e[1], ..., e[Dim]}."
+
+\[Omega]Ud::usage = "Spin connection 1-form omega^a_b."
+\[Omega]dd::usage = "Spin connection omega_{ab} (both indices down)."
+
+idGam::usage = "Identity element in the Clifford algebra."
+id2::usage = "2x2 identity matrix in the Pauli sector."
+GU::usage = "Explicit gamma matrix representation."
+
+Begin["`Private`"]
+
+(*
 Author : Marcelo Oyarzo
 Acknowledgement: I learned some of properties of FormDegree, Wedge and d[] from the RGTC source code.
 So I want to thank the author of RGTC package for keeping it open source. 
 Also I thank Ruggero Noris and Stefano Maurelli the code and 
 for poiting my out issues and helped me to improve the code.
-"
+*)
 
 (*
 The code is organized as follows:
@@ -32,7 +121,6 @@ The code is organized as follows:
 
 4) Hodge star and related operations: 
 	-Hstar
-	-MyHStar
 	-MyHStarE
 	-DNAofForm
 	-SparseFromDNA, etc.
@@ -55,9 +143,7 @@ FormDegree[e[n_Integer]]:=1;
 FormDegree[x_Wedge]:=Plus@@Map[FormDegree,List@@x];
 FormDegree[x_Times]:=Plus@@Map[FormDegree,List@@x];
 FormDegree[x_Plus]:=FormDegree[First@x];
-IsThisGood[x_Plus]:=If[Length@DeleteDuplicates[FormDegree/@List@@x]==1,Print["Yes"],Print["No"]];
 FormDegree[x_List]:=FormDegree/@x;
-IsThisGood[x_List]:=If[Length@DeleteDuplicates[FormDegree/@Flatten@x]==1,Print["Yes"],Print["No"]];
 
 (*============== Gamma matrices initialization ==============*)
 
@@ -200,51 +286,7 @@ d[\[Sigma][i_?IntegerQ]]:=0;d[id2]=0;
 		\[Sigma][3] . \[Sigma][2]:>-I \[Sigma][1],
 		\[Sigma][3] . \[Sigma][1]:>I \[Sigma][2]
 		};
-	
-(*   ----- simpGam2 ----*)
-Clear[simpGam2];
-Clear[simpGamList];
 
-simpGam2::trapped = "There is a problem with center dot. Somebody got trapped...";
-
-simpGam2[X_] := X/.CenterDot[Gams__]:>simpGamList[Gams]
-simpGamList[Gams__]:=
-	Module[{numbs,Sortnumbs,sign,partition,\[Eta]int,simpPartitionElement,signPerm},
-				
-		numbs = DeleteCases[List[Gams],idGam]/.Gam->Identity;
-		Print[numbs];
-		If[Not[ValueQ[\[Eta]dd]],
-			Print["!!!! There is a problem. Define your flat metric \[Eta]dd"];
-			Return[Gams],
-				\[Eta]int = \[Eta]dd
-		];
-		If[
-		Signature[numbs]=!=0,
-			Return[CenterDot[Gams]]
-		];
-		Sortnumbs = Sort[numbs];
-		signPerm = Signature[PermutationList[FindPermutation[numbs, Sortnumbs]]];
-
-		partition = Split[Sortnumbs];
-		
-		simpPartitionElement[partElem_List] := 
-			Module[{outlist,comp,signElem},
-			comp = partElem[[1]];
-			If[
-			EvenQ[Length[partElem]],
-				outlist = {};
-				signElem = (\[Eta]int[[comp,comp]])^(Length[partElem]/2),
-					outlist = {comp};
-					signElem = (\[Eta]int[[comp,comp]])^((Length[partElem]-1)/2)
-			];
-			Return[<|"outlist"->outlist, "sign"->signElem|>]
-			];
-		
-		outFromsimp = Map[simpPartitionElement, partition];
-		signpowers =  
-		sign = signPerm* Apply[Times,Map[#["sign"]&,outFromsimp]];
-		Return[sign*Apply[CenterDot,Map[Gam,Flatten[Map[#["outlist"]&,outFromsimp]]]]];
-		];
 (*=== Safe Production between Gam Sigma matrices ===*)
 
 RuleFromTensorProd[X_] := 
@@ -1442,19 +1484,9 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
     ---- "Conneting with previous notation" ----
 *)
 
-SetAttributes[NewComputeRdd, HoldFirst];
-GetArrayRdd[bundleIN_Association, simp_:Identity] := 
-	Module[{bundle,ARicdd, Ricdd, Dim, Rdd},
-		bundle = bundleIN;
-		Dim = Length[bundle["coord"]];
-		PaiComputeBundleTensors[bundle, "Rdd", simp];
-		ARicdd = bundle["Tensors", "Rdd"];
-		Ricdd[i_,j_] := PaiComponent[ARicdd, {i, j}, "Rdd"];
-		Rdd = Array[Ricdd, {Dim,Dim}];
-		Return[Rdd];
-	];
-
-
+(*
+    ---- Hodge Builders ----
+*)
 
 Clear[BuildHodge];
 SetAttributes[BuildHodge, HoldFirst];
@@ -1568,17 +1600,17 @@ PaiComputeCurvatureForm[frameBundle_, simp_: Identity] := Module[
 	vielbein = frameBundle;
 	RRUd = (d[omegaUd] + omegaUd\[Wedge]omegaUd)/.vielbein["dxToe"];
 	RRUd = simp[RRUd];
-	AssociateTo[frameBundle, "curvatureForm" -> <|"Ud" -> RRUd|>]
+	AssociateTo[frameBundle, "curvatureForm" -> <|"Ud" -> RRUd|>];
 	];
 
 Clear[PaiComputeRddddFlat];
 SetAttributes[PaiComputeRddddFlat, HoldFirst];
 PaiComputeRddddFlat[frameBundle_, simp_: Identity] := Module[
-	{eta, RUd, RddUd, RUddd},
+	{eta, RUd, contraction, RddUd, RUddd, Rdddd},
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	RUd = frameBundle["curvatureForm", "Ud"];
 	contraction = frameBundle["contraction"];
-	RddUd = -contraction[contraction[RUd]];
+	RddUd = -contraction[RUd];
 	RUddd = Transpose[RddUd, {3,4,1,2}];
 	Rdddd = eta. RUddd;
 	AssociateTo[frameBundle, "FlatTensors" -> <|"Rdddd"-> Rdddd|>]
@@ -1608,5 +1640,6 @@ PaiComputeRicciScalarFlat[frameBundle_, simp_: Identity] := Module[
 	AssociateTo[frameBundle["FlatTensors"], <|"RicciScalar"-> RicciScalar|>]
 	];
 
+End[]
 
-
+EndPackage[]
