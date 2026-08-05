@@ -1525,7 +1525,6 @@ BuildHodgeMetric[bundle_, simp_:Simplify] :=
 	];
 
 BuildHodgeVielbein[bundle_, simp_:Simplify] := Module[{basis, eta, etainv, sqrtdeteta},
-	Print["---- Constructing Hodge star with vielbein"];
 	basis = bundle["basis"];
 	eta = DiagonalMatrix[bundle["signature"]]; 
 	etainv = Inverse[eta];
@@ -1610,7 +1609,7 @@ PaiComputeRddddFlat[frameBundle_, simp_: Identity] := Module[
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	RUd = frameBundle["curvatureForm", "Ud"];
 	contraction = frameBundle["contraction"];
-	RddUd = -contraction[RUd];
+	RddUd = -contraction[contraction[RUd]];
 	RUddd = Transpose[RddUd, {3,4,1,2}];
 	Rdddd = eta. RUddd;
 	AssociateTo[frameBundle, "FlatTensors" -> <|"Rdddd"-> Rdddd|>]
