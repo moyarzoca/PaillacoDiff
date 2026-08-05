@@ -62,6 +62,14 @@ GetTensorArray[bundle, "gdd"]                   (* returns Dim × Dim dense arra
 
 ## Building Operators
 
+### Covariant derivative
+
+```mathematica
+nablaT = PaiCovD[bundle, Tdd, "dd"]
+```
+
+`PaiCovD` computes the coordinate-basis covariant derivative of a tensor array. The `indices` string gives the tensor index variance with `"U"` for upper and `"d"` for lower indices. The returned array has the derivative index first.
+
 ### Hodge star
 
 ```mathematica
@@ -114,5 +122,6 @@ spinConnection → curvatureForm → RddddFlat → RddFlat → RicciScalarFlat
 |---|---|
 | `TensorProductContract[t1, t2, {{i1,j1}, ...}]` | Contracted tensor product |
 | `RaiseIndices[sparse, bundle, {pos1, pos2, ...}]` | Raise specified indices using bundle metric |
+| `PaiCovD[bundle, tensor, indices]` | Compute the coordinate-basis covariant derivative; derivative index is first |
 | `GetTensorArray[bundle, name]` | Return dense array for a tensor (computes if needed) |
 | `InitializeBundle[bundle]` | Turn list into Association, set d[constants] = 0 |

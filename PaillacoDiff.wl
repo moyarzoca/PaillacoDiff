@@ -42,6 +42,7 @@ ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spi
 InitializeBundle::usage = "InitializeBundle[bundle] initialises a bundle Association."
 TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
 RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
+PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
 GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
 PaiComputeMetric::usage = "PaiComputeMetric[bundle] computes metric from bundle's ds2."
 PaiComputeChrisUdd::usage = "PaiComputeChrisUdd[bundle] computes Christoffel symbols from bundle."
@@ -1090,6 +1091,44 @@ RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] :=
 		Return[Transpose[TensorUpPermuted, indexPermutation]];
 	];
 
+(*
+				---- Covariant derivative ----
+*)
+
+Clear[PaiCovD];
+ClearAll[ComputeTermCovD];
+
+ComputeTermCovD[ChrUdd_, Tensor_, pos_, NLegs_, Uord_] := Module[
+	{UnorderedProduct, toTranslate, term},
+	Which[
+	Uord === "d",
+		UnorderedProduct = TensorProductContract[ChrUdd, Tensor, {{1, 3 + pos}}];
+		toTranslate = DeleteCases[Range[2, NLegs + 1], 1 + pos];
+		term = -Transpose[UnorderedProduct, {1, 1 + pos, Sequence @@ toTranslate}],
+	Uord === "U",
+		UnorderedProduct = TensorProductContract[ChrUdd, Tensor, {{3, 3 + pos}}];
+		toTranslate = DeleteCases[Range[1, NLegs + 1], 1 + pos];
+		term = Transpose[UnorderedProduct, {1 + pos, Sequence @@ toTranslate}],
+	True,
+		Print["[Aborting] character << " <> ToString[Uord] <> " >> is not U or d"];
+		Abort[];
+	];
+	Return[term]
+];
+
+SetAttributes[PaiCovD, HoldFirst];
+PaiCovD[bundle_, tensor_, indices_String] :=
+	Module[{indicesSplit, terms, chrUdd, nLegs, coord},
+		indicesSplit = Characters[indices];
+		nLegs = Length[indicesSplit];
+		chrUdd = GetTensorArray[bundle, "ChrisUdd"];
+		terms = Table[
+			ComputeTermCovD[chrUdd, tensor, pos, nLegs, indicesSplit[[pos]]]
+		,{pos, nLegs}];
+		coord = bundle["coord"];
+		Return[Table[D[tensor, xIter], {xIter, coord}] + Total[terms]];
+	];
+
 SetAttributes[GetTensorArray, HoldFirst];
 GetTensorArray[bundle_, tensorName_, simp_:Identity] := 
 	Module[{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor},
@@ -1611,7 +1650,7 @@ PaiComputeRddddFlat[frameBundle_, simp_: Identity] := Module[
 	contraction = frameBundle["contraction"];
 	RddUd = -contraction[contraction[RUd]];
 	RUddd = Transpose[RddUd, {3,4,1,2}];
-	Rdddd = eta. RUddd;
+	Rdddd = eta . RUddd;
 	AssociateTo[frameBundle, "FlatTensors" -> <|"Rdddd"-> Rdddd|>]
 	];
 
@@ -1622,7 +1661,7 @@ PaiComputeRddFlat[frameBundle_, simp_: Identity] := Module[
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	etainv = Inverse[eta];
 	Rdddd = frameBundle["FlatTensors", "Rdddd"];
-	RUddd = etainv.Rdddd;
+	RUddd = etainv . Rdddd;
 	Rdd = TensorContract[RUddd, {{1, 3}}];
 	AssociateTo[frameBundle["FlatTensors"], <|"Rdd"-> Rdd|>]
 	];
@@ -1634,7 +1673,7 @@ PaiComputeRicciScalarFlat[frameBundle_, simp_: Identity] := Module[
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	etainv = Inverse[eta];
 	Rdd = frameBundle["FlatTensors", "Rdd"];
-	RUd = etainv.Rdd;
+	RUd = etainv . Rdd;
 	RicciScalar = Tr[RUd];
 	AssociateTo[frameBundle["FlatTensors"], <|"RicciScalar"-> RicciScalar|>]
 	];

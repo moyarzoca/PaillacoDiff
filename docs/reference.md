@@ -133,6 +133,7 @@
 | `InitializeBundle` | **Public** | Initializes a bundle Association | Sets `d[constant] = 0` for all listed constants. |
 | `TensorProductContract` | **Public** | Contracted tensor product | Wrapper around `TensorContract[Inactive[TensorProduct][…], …]` with `Activate`. |
 | `RaiseIndices` | **Public** | Raises specified indices of a sparse tensor using bundle metric | Uses `GetTensorArray[bundle, "gUU"]`. |
+| `PaiCovD` | **Public** | Computes the coordinate-basis covariant derivative of a tensor array | Uses `GetTensorArray[bundle, "ChrisUdd"]`. The `indices` string uses `U`/`d`; the derivative index is first. |
 | `GetTensorArray` | **Public** | Retrieves a tensor array from a bundle, computing it on demand | Orchestrates via `PaiComputeBundleTensors`. Returns dense array. |
 | `CleanZeros` | Private | Removes zero entries from an Association | `KeySelect[X, X[#] =!= 0 &]`. |
 | `PaiComponent` | Private | Dispatcher for component lookup by tensor name | Routes to symmetric/Riemann lookups. |
@@ -204,9 +205,9 @@
 
 ## 8. Final Public API (after BeginPackage refactor)
 
-### Public Functions (49)
+### Public Functions (50)
 
-`FormDegree`, `Wedge`, `d`, `PolyFormQ`, `Gam`, `GamQ`, `CenterDot`, `TensorProduct`, `Dot`, `simpGamma`, `GenerateGamma`, `CliffordMap`, `Extractor`, `Extractorleft`, `coordcontraction`, `DNAofForm`, `SparseFromDNA`, `DNAFromSparse`, `BuildSquaresTools`, `FormSquare`, `FormSquaredd`, `Hstar`, `FormToSparse`, `FormsToMatrix`, `ClearGeometric`, `DiffToMatrix`, `Computegdd`, `ComputeChrisUdd`, `ComputeRdd`, `ComputeRicciScalar`, `SetVielbein`, `ComputeSpinConnection`, `InitializeBundle`, `TensorProductContract`, `RaiseIndices`, `GetTensorArray`, `PaiComputeMetric`, `PaiComputeChrisUdd`, `PaiComputeRdddd`, `PaiComputeRdd`, `PaiComputeRicciScalar`, `PaiComputeBundleTensors`, `BuildHodge`, `BuildHodgeMetric`, `BuildHodgeVielbein`, `InitVielbein`, `PaiComputeSpinConnection`, `PaiComputeCurvatureForm`, `PaiComputeRddddFlat`, `PaiComputeRddFlat`, `PaiComputeRicciScalarFlat`
+`FormDegree`, `Wedge`, `d`, `PolyFormQ`, `Gam`, `GamQ`, `CenterDot`, `TensorProduct`, `Dot`, `simpGamma`, `GenerateGamma`, `CliffordMap`, `Extractor`, `Extractorleft`, `coordcontraction`, `DNAofForm`, `SparseFromDNA`, `DNAFromSparse`, `BuildSquaresTools`, `FormSquare`, `FormSquaredd`, `Hstar`, `FormToSparse`, `FormsToMatrix`, `ClearGeometric`, `DiffToMatrix`, `Computegdd`, `ComputeChrisUdd`, `ComputeRdd`, `ComputeRicciScalar`, `SetVielbein`, `ComputeSpinConnection`, `InitializeBundle`, `TensorProductContract`, `RaiseIndices`, `PaiCovD`, `GetTensorArray`, `PaiComputeMetric`, `PaiComputeChrisUdd`, `PaiComputeRdddd`, `PaiComputeRdd`, `PaiComputeRicciScalar`, `PaiComputeBundleTensors`, `BuildHodge`, `BuildHodgeMetric`, `BuildHodgeVielbein`, `InitVielbein`, `PaiComputeSpinConnection`, `PaiComputeCurvatureForm`, `PaiComputeRddddFlat`, `PaiComputeRddFlat`, `PaiComputeRicciScalarFlat`
 
 ### Public Globals (21)
 
