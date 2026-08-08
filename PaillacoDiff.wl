@@ -84,6 +84,34 @@ eBasis::usage = "List of vielbein basis symbols {e[1], ..., e[Dim]}."
 
 Begin["`Private`"]
 
+ClearAll[GlobalRequired];
+SetAttributes[GlobalRequired, HoldAll];
+
+GlobalRequired::missing =
+	"Global Mode requires `1` to be defined.";
+
+GlobalRequired[x_Symbol] :=
+	If[
+		!ValueQ[x],
+		Message[GlobalRequired::missing, HoldForm[x]];
+		Abort[]
+	];
+
+GlobalRequired[x_Symbol, xs__Symbol] := (
+	GlobalRequired[x];
+	GlobalRequired[xs]
+);
+
+ClearAll[ResolveGlobal];
+SetAttributes[ResolveGlobal, HoldRest];
+
+ResolveGlobal[varIn_, varGlob_Symbol, func_:Identity] := If[
+	varIn === "Global",
+		GlobalRequired[varGlob];
+		func[varGlob],
+			varIn
+];
+
 (*
 	--------- Form Degree --------- 
 
@@ -269,48 +297,36 @@ coeffBaseElement[pform_, base_]:=
 	Return[{sign*coeff, baseNumb}];
 	];
 
-DNAofForm::nocord = 
-	"No coordinates provided to computed DNAofForm";
 DNAofForm::noBaseFound = 
 	"No base element found";
 Clear[DNAofForm];
-DNAofForm[XIN_,base_:Automatic] := Module[
-		{TermsXArray,listtermscoeffs,mapcoord,Dimint,coordint,mappiator,Collected, track, X},
-		If[FormDegree[XIN]===0,
-			Return[{XIN}]];
-		
-			Which[
-				base =!= Automatic,
-					baseint = base;
-					Dimint = Length[baseint];
-					X = XIN,
-				ValueQ[coord], 
-					baseint = d[coord];
-					Dimint = Length[baseint];
-					X = XIN,
-				True,
-					Message[DNAofForm::nocord];
-					Return[$Failed]
-			];
-		
-		
-		Collected = 
-			Which[
-			FormDegree[X]===1,
-				Collect[Expand@X, baseint],
-			(FormDegree[X]>1)||PolyFormQ[X],
-				Collect[Expand@X, _Wedge]
-			];
-		
-		formAsList = 
-			If[
-			Head[Collected] === Plus,
-				Apply[List,Collected],
-					{Collected}
-				];
-		
-		Return[Map[coeffBaseElement[#, baseint]&, formAsList]];
+
+DNAofForm[FormIn_, base_:"Global"] := Module[
+	{Collected, baseint, formAsList},
+
+	If[FormDegree[FormIn]===0,
+		Return[{FormIn}]
 	];
+	
+	baseint = ResolveGlobal[base, coord, d];
+
+	Collected = 
+		Which[
+		FormDegree[FormIn]===1,
+			Collect[Expand@FormIn, baseint],
+		(FormDegree[FormIn]>1)||PolyFormQ[FormIn],
+			Collect[Expand@FormIn, _Wedge]
+		];
+
+	formAsList = 
+		If[
+		Head[Collected] === Plus,
+			Apply[List,Collected],
+				{Collected}
+			];
+	
+	Return[Map[coeffBaseElement[#, baseint]&, formAsList]];
+];
 	
 (*
    ---- Tools DNA and Sparse Array ----
@@ -417,10 +433,9 @@ BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, d
 	];
 ];
 
-(*   FormSquare  *)
 
 Clear[FormSquare];
-FormSquare[Xform_, gUUIN_:Automatic, simp_:Identity, basisIN_:Automatic] :=
+FormSquare[Xform_, gUUIN_:"Global", simp_:Identity, basisIN_:"Global"] :=
 Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
 	FformValues, FtensorValues, basisint,Dim},
@@ -428,19 +443,10 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	Xform ===0,
 		Return[0]
 	];
-		
-	If[
-	gUUIN===Automatic,
-		gintUU=SparseArray[gUU],
-			gintUU = SparseArray[gUUIN]
-	];
-	
-	If[
-	basisIN===Automatic,
-		basisint = d[coord],
-			basisint = basisIN
-	];
-	
+
+	gintUU = SparseArray[ResolveGlobal[gUUIN, gUU]];
+	basisint = ResolveGlobal[basisIN, coord, d];
+
 	deg = FormDegree[Xform];
 	Dim = Length[basisint];
 	FformDNA = simp[DNAofForm[Xform, basisint]];
@@ -460,28 +466,19 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	Return[(FformValues . FtensorValues)*(deg)!]
 ];
 
-(*   FormSquaredd  *)
+
 Clear[FormSquaredd];
 FormSquaredd[0,__]:=0
 
-FormSquaredd[Xform_, gintUUinput_:Automatic, simp_:Identity, basisIN_:Automatic] :=
+FormSquaredd[Xform_, gintUUinput_:"Global", simp_:Identity, basisIN_:"Global"] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
 	basisint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
 	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
 	Xdmunu, XdUmunu, FtensorSparse},
 	
-	If[
-	gintUUinput===Automatic,
-		gintUU = SparseArray[gUU],
-			gintUU = SparseArray[gintUUinput]
-	];
-	
-	If[
-	basisIN===Automatic,
-		basisint = d[coord],
-			basisint = basisIN
-	];
-	
+	gintUU = SparseArray[ResolveGlobal[gintUUinput, gUU]];
+	basisint = ResolveGlobal[basisIN, coord, d];
+
 	Dim = Length[basisint];
 	deg = FormDegree[Xform];
 	FformDNA = simp[DNAofForm[Xform, basisint]];
@@ -516,33 +513,20 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 ];
 
-(*  Hstar  *)
 
 Clear[Hstar];
-Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, baseIN_:Automatic, simp_:Identity] := 
+Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:Identity] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
-		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint},
+		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint, baseint},
+
 		If[
 		Xform ===0,
-			Return[0]];
-			
-		If[
-		gintUUIN===Automatic,
-			gintUU = SparseArray[gUU],
-				gintUU = SparseArray[gintUUIN]
+			Return[0]
 		];
-		
-		If[
-		sqrtdetgIN===Automatic,
-			sqrtdetgint = sqrtdetg,
-				sqrtdetgint = sqrtdetgIN
-		];
-		
-		If[
-		baseIN===Automatic,
-			baseint = d[coord],
-				baseint = baseIN
-		];
+
+		gintUU = SparseArray[ResolveGlobal[gintUUIN, gUU]];
+		sqrtdetgint = ResolveGlobal[sqrtdetgIN, sqrtdetg];
+		baseint = ResolveGlobal[baseIN, coord, d];
 		
 		Dim = Length[baseint];
 		deg = FormDegree[Xform];
@@ -581,13 +565,9 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, baseIN_:Automatic, sim
 
 Clear[FormToSparse];
 Clear[FormsToMatrix];
-FormToSparse[X_, formdegIN_:"deg", coordIN_:"coord"] :=
+FormToSparse[X_, formdegIN_:"deg", coordIN_:"Global"] :=
 Module[{coordint, Dimint, formdegint},
-	If[
-		coordIN === "coord",
-			coordint = coord,
-				coordint = coordIN
-	];
+	coordint = ResolveGlobal[coordIN, coord];
 	Dimint = Length[coordint];
 	Which[
 		(X===0)&&(formdegIN==="deg"),
@@ -600,7 +580,7 @@ Module[{coordint, Dimint, formdegint},
 	Return[SparseFromDNA[DNAofForm[X, d[coordint]], Dimint,formdegint]];
 ];
 
-FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"coord"] := Normal[FormToSparse[X, formdegIN, coordIN]];
+FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"Global"] := Normal[FormToSparse[X, formdegIN, coordIN]];
 
 (*====== Hodge star in the vielbein basis ======*)
 ClearAll[MyHStarE];
@@ -635,16 +615,20 @@ Module[{formdegree,DNA,lengthDNA,func\[Eta],mapindices,relevanmatrix\[Eta],signi
 (* ====== Riemann geometry ====== *)
 
 ClearGeometric[]:=Module[{},Clear[ChrisUdd];Clear[Rdd];Clear[RicciScalar];Return[Print["Clear OK - ChrisUdd, Rdd, RicciScalar"]]];
-DiffToMatrix[themetric_,coordIn_:coord]:=
-	Module[{Dimint},
-		Dimint=Length@coordIn;
-		Table[
-			If[iiinx!=jjinx,
-				1/2*Coefficient[Collect[Expand[themetric],d[X_]d[Y_]],d[coordIn[[iiinx]]]d[coordIn[[jjinx]]]],
-					Coefficient[Collect[Expand[themetric],d[X_]d[Y_]],d[coordIn[[iiinx]]]d[coordIn[[jjinx]]]]
-			]
-		,{iiinx,Dimint},{jjinx,Dimint}]
-	];
+
+DiffToMatrix[themetric_, coordIn_:"Global"] := Module[
+	{Dimint, coordMod},
+
+	coordMod = ResolveGlobal[coordIn, coord];
+	metricCollected = Collect[Expand[themetric], _d];
+
+	Table[
+		If[xIter=!=yIter,
+			1/2*Coefficient[metricCollected, d[xIter]*d[yIter]],
+				Coefficient[metricCollected, d[xIter]*d[yIter]]
+		]
+	,{xIter, coordMod}, {yIter, coordMod}]
+];
 	
 	
 Computegdd[bundle_Association] := 
@@ -766,6 +750,7 @@ inP[x_,u_*y_] := u*inP[x,y]/;FormDegree[u]===0;
 inP[x_.*e[a_],y_.*e[b_]] := x*y*KroneckerDelta[a,b];
 inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]] := x*y*(KroneckerDelta[j,k]*Wedge[p]-Wedge[e[k],inP[e[j],Wedge[p]]])
 Contractione[X_, DimIn_:Dim] := Table[inP[e[a1111],X],{a1111,DimIn}];
+
 ClearAll[SetVielbein];
 SetVielbein[eIN_,flatmetric_,simp_:Identity]:=
 Module[{},
