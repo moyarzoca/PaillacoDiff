@@ -11,7 +11,7 @@ PolyFormQ::usage = "PolyFormQ[expr] tests whether expr is a sum of forms of diff
 
 Extractor::usage = "Extractor[F, A] extracts the coefficient of 1-form A in polyform F."
 Extractorleft::usage = "Extractorleft[F, A] extracts A from the left side of each term."
-coordcontraction::usage = "coordcontraction[X] contracts X with all coordinate 1-forms."
+coordcontraction::usage = "coordcontraction[X, coord] contracts X with all coordinate 1-forms."
 
 DNAofForm::usage = "DNAofForm[X] decomposes form X into {{coeff, indices}, ...}."
 SparseFromDNA::usage = "SparseFromDNA[DNA, dim, deg] converts DNA to a SparseArray."
@@ -221,19 +221,21 @@ Extractor::usage="Given a polyform F = F1+ F2\[Wedge]A,  with A a 1-form,  Extra
 
 Clear[Extractorleft];
 Clear[coordcontraction];
-Extractorleft[F3_List,y_]:=Extractor[#,y]&/@F3;
-Extractorleft[x__,oneform_]:=
-Module[{listx,listxref,killzleft},
-	killzleft[y__,KK_]:=
-	Module[{pos},pos=Flatten[Position[{y},KK]];If[pos==={},Return[0]];
+Extractorleft[F3_List,y_] := Extractor[#,y]&/@F3;
+Extractorleft[x__,oneform_] := Module[
+	{listx,listxref,killzleft},
+	killzleft[y__,KK_] := Module[
+		{pos},
+		pos = Flatten[Position[{y},KK]];
+		If[pos==={},Return[0]];
 		Return[(Wedge@@DeleteCases[{y},KK])*(-1)^(pos-1)]
-		];
+	];
 	listx=If[Head[x]===Plus, List@@x,{x}];
 	listxref=Select[listx,(!FreeQ[#,oneform])&];
 	Return[Plus@@Flatten[#/.Wedge[y__]:>killzleft[y,oneform]/.oneform->1&/@listxref]];
 ];
-coordcontraction[X_List,coord_:coord]:=Map[coordcontraction[#,coord]&,X];
-coordcontraction[X_,coord_:coord]:=Extractorleft[X,#]&/@d[coord];
+coordcontraction[X_List, coord_:coord]:=Map[coordcontraction[#,coord]&,X];
+coordcontraction[X_, coord_:coord]:=Extractorleft[X,#]&/@d[coord];
 
 
 (*
@@ -582,36 +584,6 @@ Module[{coordint, Dimint, formdegint},
 
 FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"Global"] := Normal[FormToSparse[X, formdegIN, coordIN]];
 
-(*====== Hodge star in the vielbein basis ======*)
-ClearAll[MyHStarE];
-
-MyHStarE[X_List,simp_:Identity,gddcoord_:{gdd,coord}]:=MyHStarE/@X;
-
-MyHStarE[X_]:=
-Module[{formdegree,DNA,lengthDNA,func\[Eta],mapindices,relevanmatrix\[Eta],signinterm,complementindices,III,term},
-	If[
-		X==0,
-		Return[0]
-	];
-	formdegree=FormDegree[X]; 
-	If[
-	formdegree===0,
-		Return[X*(Wedge@@(e/@Range[Dim]))]
-	];
-	DNA=DNAofForm[X];
-	lengthDNA=Length[DNA];
-	func\[Eta]=\[Eta]UU[[#]]&;
-	Do[
-		relevanmatrix\[Eta] = func\[Eta]/@DNA[[IIIinx,2]];
-		mapindices = SparseArray[relevanmatrix\[Eta]]["NonzeroPositions"];
-		signinterm = Times@@(relevanmatrix\[Eta][[Sequence@@#]]&/@mapindices);
-		complementindices = Complement[Range[Dim],mapindices[[All,2]]];
-		term[IIIinx] = DNA[[IIIinx,1]]*signinterm*Signature[{Sequence@@(mapindices[[All,2]]),Sequence@@complementindices}]*(Wedge@@(e/@complementindices))
-	,{IIIinx,1,lengthDNA}
-	];
-	
-	Return[Sum[term[IIIinx],{IIIinx,lengthDNA}]];
-];
 (* ====== Riemann geometry ====== *)
 
 ClearGeometric[]:=Module[{},Clear[ChrisUdd];Clear[Rdd];Clear[RicciScalar];Return[Print["Clear OK - ChrisUdd, Rdd, RicciScalar"]]];
@@ -752,8 +724,7 @@ inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]] := x*y*(KroneckerDelta[j,k]*Wed
 Contractione[X_, DimIn_:Dim] := Table[inP[e[a1111],X],{a1111,DimIn}];
 
 ClearAll[SetVielbein];
-SetVielbein[eIN_,flatmetric_,simp_:Identity]:=
-Module[{},
+SetVielbein[eIN_,flatmetric_,simp_:Identity] := Module[{},
 	ClearAll[\[Eta]dd,\[Eta]UU,eTodx,dxToe,eBasis,gdd,gUU,eamuUd,eamudU];
 	\[Eta]dd=flatmetric;
 	\[Eta]UU=Inverse[\[Eta]dd];
