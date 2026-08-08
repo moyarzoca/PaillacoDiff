@@ -28,7 +28,7 @@ FormSquare::usage = "FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
 FormSquaredd::usage = "FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
 Hstar::usage = "Hstar[X] computes the Hodge dual of form X."
 FormToSparse::usage = "FormToSparse[X] converts a form to a SparseArray."
-FormsToMatrix::usage = "FormsToMatrix[X] converts a form to a dense matrix."
+FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dense matrix. deg is an Integer and the degree of the form, and coord are the coordinates."
 
 ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
 DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
