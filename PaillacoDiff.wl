@@ -63,6 +63,11 @@ PaiComputeRicciScalarFlat::usage = "PaiComputeRicciScalarFlat[bundle] computes R
 
 (* ---------- Public globals ---------- *)
 
+PaiNonCommutativeScalarQ::usage =
+  "PaiNonCommutativeScalarQ[expr] tests whether expr contains a registered noncommutative scalar coefficient.";
+PaiRegisterNonCommutativeScalarQ::usage =
+  "PaiRegisterNonCommutativeScalarQ[test] registers a predicate test[expr] used by Wedge to detect noncommutative scalar coefficients.";
+
 coord::usage = "List of coordinate variables."
 Dim::usage = "Spacetime dimension."
 gdd::usage = "Metric tensor g_{mu nu}."
@@ -164,6 +169,18 @@ d[Gam[x_?IntegerQ]]:=0;
 
 (*=============== Wedge ===============*)
 
+$PaiNonCommutativeScalarTests = {};
+
+PaiRegisterNonCommutativeScalarQ[test_] := Module[{},
+  If[
+    ! MemberQ[$PaiNonCommutativeScalarTests, test],
+    AppendTo[$PaiNonCommutativeScalarTests, test]
+  ];
+  test
+];
+
+PaiNonCommutativeScalarQ[expr_] :=  AnyTrue[$PaiNonCommutativeScalarTests, TrueQ[#[expr]] &];
+
 ClearAll[Wedge]
 Default[Wedge]:=1;
 Wedge/:Wedge[]:=1;
@@ -177,11 +194,11 @@ Wedge[x__,y_List]:=(Wedge[x,#]&/@y);
 Wedge[x_List,y__]:=(Wedge[#,y]&/@x);
 Wedge[y_,x_^n_.]:=x^n*Wedge[y]/;FormDegree[x]===0;
 Wedge[x_^n_.,y_]:=x^n*Wedge[y]/;FormDegree[x]===0;
-Wedge[x__,Times[sca_,y_]]:=Times[sca,Wedge[x,y]]/;NumericQ[sca]||(FormDegree[sca]===0&&(!GamQ[sca]||!GamQ[{x}]));
-Wedge[Times[sca_,x_],y__]:=Times[sca,Wedge[x,y]]/;NumericQ[sca]||(FormDegree[sca]===0&&!GamQ[sca]);
-Wedge[x_,y___,x_]:=0/;OddQ[FormDegree[x]]&&!GamQ[x]&&!GamQ[{y}];
-Wedge[y__]:=Signature[{y}]*Wedge@@Sort[{y}]/;Sort[{y}]=!={y}&&Union[FormDegree[{y}]]==={1}&&!GamQ[{y}];
 Wedge[Times[gam_,x_],y__]:=CenterDot[gam,Wedge[x,y]]/;GamQ[gam]
+Wedge[x__,Times[sca_,y_]]:=Times[sca,Wedge[x,y]]/;NumericQ[sca]||(FormDegree[sca]===0&&(!PaiNonCommutativeScalarQ[sca]||!PaiNonCommutativeScalarQ[{x}]));
+Wedge[Times[sca_,x_],y__]:=Times[sca,Wedge[x,y]]/;NumericQ[sca]||(FormDegree[sca]===0&&!PaiNonCommutativeScalarQ[sca]);
+Wedge[x_,y___,x_]:=0/;OddQ[FormDegree[x]]&&!PaiNonCommutativeScalarQ[x]&&!PaiNonCommutativeScalarQ[{y}];
+Wedge[y__]:=Signature[{y}]*Wedge@@Sort[{y}]/;Sort[{y}]=!={y}&&Union[FormDegree[{y}]]==={1}&&!PaiNonCommutativeScalarQ[{y}];
 
 WedgeDot[a_, b_] := Inner[Wedge, a, b, Plus];
 Wedge[A_List,B_List] := WedgeDot[A,B];
