@@ -539,7 +539,7 @@ Hstar[Xform_, gintUUIN_:Automatic, sqrtdetgIN_:Automatic, baseIN_:Automatic, sim
 		];
 		
 		If[
-		coordIN===Automatic,
+		baseIN===Automatic,
 			baseint = d[coord],
 				baseint = baseIN
 		];
@@ -861,8 +861,10 @@ SetAttributes[InitializeBundle, HoldFirst];
 
 InitializeBundle[bundle_] := Module[{ToClear},
     bundle = Association[bundle];
-    Do[d[c]=0, {c, bundle["constants"]}];
-]
+	If[KeyExistsQ[bundle, "constants"],
+    	Do[d[cIter]=0, {cIter, bundle["constants"]}];
+	];
+];
 
 TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContract[Inactive[TensorProduct][Tensors], contractIndices];
 
