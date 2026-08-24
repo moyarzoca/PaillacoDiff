@@ -32,7 +32,7 @@ ComputeRicciScalar::usage = "ComputeRicciScalar[] computes the Ricci scalar."
 SetVielbein::usage = "SetVielbein[eIN, eta] sets up the vielbein basis and defines global variables."
 ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spin connection 1-form."
 
-InitializeBundle::usage = "InitializeBundle[bundle] initialises a bundle Association."
+InitMetricBundle::usage = "InitializeBundle[bundle] initialises a bundle Association."
 TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
 RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
 PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
@@ -47,7 +47,6 @@ PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] compute
 BuildHodge::usage = "BuildHodge[bundle] builds a Hodge star function for a bundle."
 BuildHodgeMetric::usage = "BuildHodgeMetric[bundle] builds a coordinate-basis Hodge star function."
 BuildHodgeVielbein::usage = "BuildHodgeVielbein[bundle] builds a vielbein-basis Hodge star function."
-InitVielbein::usage = "InitVielbein[bundle] initialises a vielbein bundle."
 PaiComputeSpinConnection::usage = "PaiComputeSpinConnection[bundle] computes spin connection in bundle."
 PaiComputeCurvatureForm::usage = "PaiComputeCurvatureForm[bundle] computes curvature 2-form."
 PaiComputeRddddFlat::usage = "PaiComputeRddddFlat[bundle] computes Riemann in flat (vielbein) basis."
@@ -413,7 +412,7 @@ Clear[BuildSquaresTools];
 SetAttributes[BuildSquaresTools, HoldFirst];
 BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, dxToe},
 	Which[
-	Not[KeyExistsQ[bundle, "UseVielbein"]] || (bundle["UseVielbein"]===False),
+	KeyExistsQ[bundle, "ds2"]===True,
 		PaiComputeBundleTensors[bundle, "metric", simp];
 		gUU = GetTensorArray[bundle, "gUU"];
 		basis = d[bundle["coord"]];
@@ -422,7 +421,7 @@ BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, d
 		      "FormSquaredd" -> Function[{X}, FormSquaredd[X, gUU, simp,  basis]]
 		    |>
 		],
-	bundle["UseVielbein"]===True,
+	KeyExistsQ[bundle, "eU"]===True,
 		eta = DiagonalMatrix[bundle["signature"]];
 		etainv = Inverse[eta];
 		basis = bundle["basis"];
@@ -431,7 +430,10 @@ BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, d
 		    <| "FormSquare" -> Function[{X}, FormSquare[X /. dxToe, etainv, simp,  basis]],
 		    "FormSquaredd" -> Function[{X}, FormSquaredd[X /. dxToe, etainv, simp,  basis]]
 		    |>
-		]
+		],
+	True,
+		Print["[ Aborting ] BuildSquaresTools: ds2 nor eU not given"];
+		Abort[];
 	];
 ];
 
@@ -813,15 +815,6 @@ Row[{"R"," = ",PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}],PrintIndices["g",{up,
                      --- Utils ---
 *)
 
-SetAttributes[InitializeBundle, HoldFirst];
-
-InitializeBundle[bundle_] := Module[{ToClear},
-    bundle = Association[bundle];
-	If[KeyExistsQ[bundle, "constants"],
-    	Do[d[cIter]=0, {cIter, bundle["constants"]}];
-	];
-];
-
 TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContract[Inactive[TensorProduct][Tensors], contractIndices];
 
 RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
@@ -1118,18 +1111,27 @@ ClearAll[PaiComputeBundleTensors];
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
 PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Identity] := Module[{}, 
 	Which[
-	Not[KeyExistsQ[bundleIN, "UseVielbein"]] || (bundleIN["UseVielbein"]===False),
+	KeyExistsQ[bundleIN, "ds2"],
 		PaiComputeBundleTensorsMetric[bundleIN, level, simp],
-	bundleIN["UseVielbein"]===True,
-		PaiComputeBundleTensorsVielbein[bundleIN, level, simp]
+	KeyExistsQ[bundleIN, "eU"],
+		PaiComputeBundleTensorsVielbein[bundleIN, level, simp],
+	True,
+		Print["[ Aborting ] netierh ds2 or eU was provided"];
+		Abort[];
 	];
 ];
 
 ClearAll[PaiComputeBundleTensorsVielbein];
 SetAttributes[PaiComputeBundleTensorsVielbein, HoldFirst];
+
 PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:Identity] := 
-Module[{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicciScalar},	
+Module[{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicciScalar},
 	bundle = bundleIN;
+
+	InitVielbeinBundle[bundleIN, simp];
+	bundle=bundleIN;
+
+	If[level === "basic", Return[]];
 
 	needSpinConnection   = Not[KeyExistsQ[bundle, "spinConnection"]];
 	needCurvature  = Not[KeyExistsQ[bundle, "curvatureForm"]];
@@ -1201,6 +1203,7 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 		AgUU = Map[simp, AgddgUU["gUU"]];
 		Tensors = Join[Tensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
+		InitMetricBundle[bundle, simp];
 	];
 	
 	If[level === "metric", 
@@ -1276,12 +1279,12 @@ Clear[BuildHodge];
 SetAttributes[BuildHodge, HoldFirst];
 BuildHodge[bundle_, simp_:Simplify] := Module[{},
 	Which[
-	Not[KeyExistsQ[bundle, "UseVielbein"]],
+	KeyExistsQ[bundle, "ds2"],
 		Return[BuildHodgeMetric[bundle, simp]],
-	bundle["UseVielbein"]===False,
-		Return[BuildHodgeMetric[bundle, simp]],
-	bundle["UseVielbein"]===True,
-		Return[BuildHodgeVielbein[bundle, simp]]
+	KeyExistsQ[bundle, "eU"],
+		Return[BuildHodgeVielbein[bundle, simp]],
+	True,
+		Print["[ Aborting ] BuildHodge: ds2 or eU are not given."];
 	];
 ];
 
@@ -1298,7 +1301,7 @@ BuildHodgeMetric[bundle_, simp_:Simplify] :=
 		];
 		gdd = GetTensorArray[bundle, "gdd"];
 		gUU = GetTensorArray[bundle, "gUU"];
-		sqrtdetg = Sqrt[-Det[gdd]];
+		sqrtdetg = simp[Sqrt[-Det[gdd]]];
 		If[KeyExistsQ[bundle, "assum"],
 				sqrtdetg = Simplify[sqrtdetg, bundle["assum"]],
 					sqrtdetg = Simplify[sqrtdetg]
@@ -1334,14 +1337,14 @@ ConstructContraction[vielbeinBundle_] := Module[
 	Return[Function[{X}, Contraction[X]]]
 	];
 
-SetAttributes[InitVielbein, HoldFirst];
+SetAttributes[InitVielbeinBundle, HoldFirst];
 
-InitVielbein[vielbeinBundle_, simp_:Simplify] := Module[
-	{eTodx, dxToe, symbs, eU, contraction, coordbasis},
+InitVielbeinBundle[vielbeinBundle_, simp_:Simplify] := Module[
+	{eTodx, dxToe, symbs, eU, contraction, coordbasis, hstar},
 	vielbeinBundle = Association[vielbeinBundle];
 	symbs = vielbeinBundle["basis"];
 	eU = vielbeinBundle["eU"];
-	coordbasis = vielbeinBundle["coordbasis"];
+	coordbasis = d[vielbeinBundle["coord"]];
 	Do[FormDegree[eIter] = 1, {eIter, symbs}];
 	eTodx = Normal[AssociationThread[symbs -> eU]];
 	dxToe = Solve[eU == symbs, coordbasis][[1]];
@@ -1350,8 +1353,27 @@ InitVielbein[vielbeinBundle_, simp_:Simplify] := Module[
 	deU = d[symbs] /. eTodx /. dxToe;
 	dictde = AssociationThread[d[symbs], deU];
 	Do[d[eIter] = Collect[dictde[d[eIter]], _Wedge, simp],{eIter, symbs}];
-	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}]
+	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}];
+	hstar = BuildHodge[vielbeinBundle, simp];
+	vielbeinBundle["Hstar"] = hstar;
+	FormSquareTools = BuildSquaresTools[vielbeinBundle, simp];
+	vielbeinBundle["FormSquare"] = FormSquareTools["FormSquare"];
+	vielbeinBundle["FormSquaredd"] = FormSquareTools["FormSquaredd"];
+
 	];
+
+SetAttributes[InitMetricBundle, HoldFirst];
+
+InitMetricBundle[bundle_, simp_:Identity] := Module[{ToClear, FormSquareTools},
+    bundle = Association[bundle];
+	If[KeyExistsQ[bundle, "constants"],
+    	Do[d[cIter]=0, {cIter, bundle["constants"]}];
+	];
+    bundle["Hstar"] = BuildHodge[bundle, simp];
+    FormSquareTools = BuildSquaresTools[bundle, simp];
+    bundle["FormSquare"] = FormSquareTools["FormSquare"];
+    bundle["FormSquaredd"] = FormSquareTools["FormSquaredd"];
+];
 
 Clear[PaiComputeSpinConnection];
 SetAttributes[PaiComputeSpinConnection, HoldFirst];
