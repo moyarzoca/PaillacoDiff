@@ -960,78 +960,78 @@ PaiComputeMetric[bundle_Association] :=
 				---- ChrisUdd ----
 *)
 
-PaiComputeChrisUdd[bundle_Association] := 
-	Module[{coord,Dim,gdd,Paigdd,gUU,AgUU,AChrisUdd,dgdd,dGamdd,GamUdd},
-		
-		coord = bundle["coord"];
-		Dim = Length[coord];
-		Paigdd = bundle["Tensors","gdd"];
-		AgUU = bundle["Tensors","gUU"];
-		gdd[i_,j_] := PaiComponent[Paigdd, {i,j}, "gdd"];
-		gUU[i_,j_] := PaiComponent[AgUU, {i,j}, "gUU"];
-		
-		dgdd[i_,j_,k_] := D[gdd[j,k],coord[[i]]];
-		dGamdd[k_,i_,j_] := 1/2*dgdd[i,j,k]+1/2*dgdd[j,i,k]-1/2*dgdd[k,i,j];
-		GamUdd[k_,i_,j_] := Sum[gUU[k,l]*dGamdd[l,i,j] ,{l,Dim}];
-		
-		AChrisUdd = 
-			Association[
-				Table[
-					{i,j,k} -> GamUdd[i,j,k]
-				,{i,Dim}, {j, Dim},{k,j,Dim}]
-			];
+PaiComputeChrisUdd[bundle_Association] := Module[
+	{coord, Dim, gdd, Paigdd, gUU, AgUU,
+	AChrisUdd, dgdd, dGamdd, GamUdd, i, j, k, l},
+
+	coord = bundle["coord"];
+	Dim = Length[coord];
+	Paigdd = bundle["Tensors","gdd"];
+	AgUU = bundle["Tensors","gUU"];
+	gdd[i_,j_] := PaiComponent[Paigdd, {i,j}, "gdd"];
+	gUU[i_,j_] := PaiComponent[AgUU, {i,j}, "gUU"];
 	
-		AChrisUdd = CleanZeros[AChrisUdd];
-		Return[AChrisUdd];
-	];
+	dgdd[i_,j_,k_] := dgdd[i,j,k] = D[gdd[j,k], coord[[i]]];
+	dGamdd[k_,i_,j_] := dGamdd[k,i,j] = 1/2*dgdd[i,j,k] + 1/2*dgdd[j,i,k] - 1/2*dgdd[k,i,j];
+	GamUdd[k_,i_,j_] := Sum[gUU[k,l]*dGamdd[l,i,j] ,{l,Dim}];
+	
+	AChrisUdd = 
+		Association[
+			Table[
+				{i,j,k} -> GamUdd[i,j,k]
+			,{i,Dim}, {j, Dim},{k,j,Dim}]
+		];
+
+	AChrisUdd = CleanZeros[AChrisUdd];
+	Return[AChrisUdd];
+];
 
 (*
 				---- Riemdddd ----
 *)
 
-PaiComputeRdddd[bundle_Association] := 
-	Module[{coord,Dim,AChrisUdd, ChrisUdd, dChrisUdd,ChrisChrisUddd,RiemUddd,Agdd,gdd, Riemdddd,seen,list, 
-			ARiemdddd,ChrisUddArray,dChrisUddArray,RiemUdddArray,ChrisChrisUdddArray,gddArray,RiemddddArray,ChrisUddArrayToDer},
-		
-		If[
-			failRequirements[bundle["Tensors"], {"ChrisUdd"}],
-				Return["Missing Tensors/AChrisUdd"]
-		];
-		
-		coord = bundle["coord"];
-		Dim = Length[coord];
-		Agdd = bundle["Tensors","gdd"];
-		AChrisUdd = bundle["Tensors","ChrisUdd"];
-		gdd[i_,j_] := PaiComponent[Agdd, {i,j}, "gdd"];
-		gddArray = SparseArray[Array[gdd,{Dim,Dim}]];
-		
-		ChrisUdd[i_,j_,k_] := PaiComponent[AChrisUdd, {i,j,k}, "ChrisUdd"]; 
-		ChrisUddArrayToDer = Array[ChrisUdd, {Dim, Dim, Dim}];
-		ChrisUddArray = SparseArray[ChrisUddArrayToDer];
-		dChrisUddArray = SparseArray[Transpose[Table[D[ChrisUddArrayToDer,coord[[i]]],{i,Dim}],{3,1,4,2}]];
-		ChrisChrisUdddArray = SparseArray[Transpose[ChrisUddArray . ChrisUddArray,{1,3,4,2}]];
-		
-		RiemUdddArray = dChrisUddArray - Transpose[dChrisUddArray, {1,2,4,3}] + ChrisChrisUdddArray - Transpose[ChrisChrisUdddArray, {1,2,4,3}];
-		
-		RiemddddArray = gddArray . RiemUdddArray;
-		
-		seen = <||>;
-		list = {};
-		
-		Do[
-			If[KeyExistsQ[seen, {k, l, i, j}], Continue[]];
-			AppendTo[list, {i, j, k, l} -> RiemddddArray[[i, j, k, l]]];
-			seen[{i, j, k, l}] = True;
-			seen[{k, l, i, j}] = True;
-		,
-		{i, Dim}, {j, i + 1, Dim}, {k, Dim}, {l, k + 1, Dim}
-		];
-  
-		ARiemdddd = Association[list];
-		ARiemdddd = CleanZeros[ARiemdddd];
-		Return[ARiemdddd];
-	];
-	
+Clear[PaiComputeRdddd];
+
+PaiComputeRdddd[bundle_Association] :=
+Module[
+    {coord, Dim, Agdd, AChrisUdd, gdd, ChrisUdd, dChrisUdd,
+    RiemUddd, Riemdddd, pairs, nPairs, rules, p, q, e},
+
+    coord = bundle["coord"];
+    Dim = Length[coord];
+
+    Agdd = bundle["Tensors", "gdd"];
+    AChrisUdd = bundle["Tensors", "ChrisUdd"];
+
+    gdd[i_, j_] :=
+        PaiComponent[Agdd, {i, j}, "gdd"];
+
+    ChrisUdd[a_, b_, c_] :=
+        PaiComponent[AChrisUdd, {a, b, c}, "ChrisUdd"];
+
+    dChrisUdd[a_, b_, c_, mu_] := dChrisUdd[a, b, c, mu] = D[ChrisUdd[a, b, c], coord[[mu]]];
+
+    RiemUddd[a_, b_, c_, d_] := RiemUddd[a, b, c, d] = (dChrisUdd[a, b, d, c] - dChrisUdd[a, b, c, d] + 
+    	Sum[ChrisUdd[a, c, e] ChrisUdd[e, b, d] - ChrisUdd[a, d, e] ChrisUdd[e, b, c], {e, Dim}]);
+
+    Riemdddd[a_, b_, c_, d_] := Riemdddd[a, b, c, d] = Sum[gdd[a, e] RiemUddd[e, b, c, d], {e, Dim}];
+
+    pairs = Subsets[Range[Dim], {2}];
+    nPairs = Length[pairs];
+
+    rules = Table[
+                With[
+                    {ab = pairs[[p]], cd = pairs[[q]]},
+                    Join[ab, cd] -> Apply[Riemdddd, Join[ab, cd]]
+                ],
+                {p, nPairs},
+                {q, p, nPairs}
+            ];
+    rules = Flatten[rules, 1];
+
+    CleanZeros[Association[rules]]
+]
+
 (*
 				---- Ricdd ----
 *)
