@@ -59,7 +59,7 @@ PaiNonCommutativeScalarQ::usage = "PaiNonCommutativeScalarQ[expr] tests whether 
 PaiRegisterNonCommutativeScalarQ::usage = "PaiRegisterNonCommutativeScalarQ[test] registers a predicate test[expr] used by Wedge to detect noncommutative scalar coefficients.";
 
 PaiSimplify::usage = "PaiSimplify[expr] applies PaillacoDiff's default lightweight algebraic simplification.";
-$UsePaiSimplify::usage = "$UsePaillacoSimplify controls whether PaiSimplify applies automatic simplification. Default is True.";
+$UsePaiSimplify::usage = "$UsePaiSimplify controls whether PaiSimplify applies automatic simplification. Default is True.";
 
 coord::usage = "List of coordinate variables."
 Dim::usage = "Spacetime dimension."
@@ -710,7 +710,7 @@ SyncGlobalTensors[] := Module[{},
 
 Clear[ComputeChrisUdd];
 
-ComputeChrisUdd[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] := Module[
+ComputeChrisUdd[simp_:Automatic, gddcoord_:{"Global", "Global"}] := Module[
     {},
     InitGlobalBundle[First[gddcoord], Last[gddcoord]];
     PaiComputeBundleTensors[globalBundle, "ChrisUdd", simp];
@@ -719,14 +719,14 @@ ComputeChrisUdd[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] := Module[
 
 Clear[ComputeRdd];
 
-ComputeRdd[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] :=Module[
+ComputeRdd[simp_:Automatic, gddcoord_:{"Global", "Global"}] :=Module[
 	{},
 	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
     	PaiComputeBundleTensors[globalBundle, "Rdd", simp];
 	SyncGlobalTensors[];
 ];
 
-ComputeRicciScalar[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] := Module[
+ComputeRicciScalar[simp_:Automatic, gddcoord_:{"Global", "Global"}] := Module[
 	{},
 	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
     	PaiComputeBundleTensors[globalBundle, "RicciScalar", simp];
@@ -875,7 +875,7 @@ PaiCovD[bundle_, tensor_, indices_String] :=
 	];
 
 SetAttributes[GetTensorArray, HoldFirst];
-GetTensorArray[bundle_, tensorName_, simp_:PaiSimplify] := 
+GetTensorArray[bundle_, tensorName_, simp_:Automatic] := 
 	Module[{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor},
 		Dim = Length[bundle["coord"]];
 		PaiComputeBundleTensors[bundle, tensorName, simp];
