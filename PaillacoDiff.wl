@@ -65,6 +65,7 @@ Dim::usage = "Spacetime dimension."
 gdd::usage = "Metric tensor g_{mu nu}."
 gUU::usage = "Inverse metric g^{mu nu}."
 ChrisUdd::usage = "Christoffel symbols Gamma^mu_{nu rho}."
+Rdddd::usage = "Riemann tensor R_{mu nu rho sigma}."
 Rdd::usage = "Ricci tensor R_{mu nu}."
 RicciScalar::usage = "Ricci scalar R."
 sqrtdetg::usage = "Sqrt[-det(g)]."
@@ -617,100 +618,105 @@ Computegdd[bundle_Association] :=
 		update = AssociateTo[copybundle, <|"gdd" -> gdd, "sqrtdetg" -> sqrtdetg|>];
 		Return[update];
 		
-	]
-
-ComputeChrisUdd[simp_:Identity,gddcoord_:{gdd,coord}] :=
-	Module[{dgdd,dGamdd,dChrisdd,initialTime,valuesimp,gddint,coordint,gUUint,Dim},
-		If[
-		gddcoord=!={gdd,coord},
-			gddint=gddcoord[[1]];
-			coordint=gddcoord[[2]],
-				gddint=gdd;coordint=coord
-		];
-		gUUint = simp[Inverse[gddint]];
-		Dim = Length@coordint;
-		initialTime = SessionTime[];
-		dgdd[iiinx_,jj_,kk_] := simp[D[gddint[[jj,kk]],coordint[[iiinx]]]];
-		dGamdd[kk_,iiinx_,jj_] := simp[1/2 dgdd[iiinx,jj,kk]+1/2 dgdd[jj,iiinx,kk]-1/2 dgdd[kk,iiinx,jj]];
-		dChrisdd = Array[dGamdd,{Dim,Dim,Dim}];
-		ChrisUdd = simp[gUUint . dChrisdd];
-		If[
-		simp===Identity,
-			valuesimp="without simplification.",
-				valuesimp="with simplification."
-		];
-		Return[
-		Print[Style["ChrisUdd",Bold],   "   ",$chrisdef,"  Christoffel symbols computed in ",SessionTime[]-initialTime," sec. ",valuesimp]
-		];
 	];
+Clear[GlobalGeometryID];
+
+GlobalGeometryID[gdd_, coord_] := Hash[HoldComplete[{gdd, coord}]];
+
+Clear[BuildGlobalBundle];
+
+BuildGlobalBundle[gdd_, coord_, id_] := Module[
+    {ds2, buildSymmetric2, Agdd, AgUU, Dim, gUU},
+
+    ds2 = d[coord].gdd.d[coord];
+    Dim = Length[coord];
+
+    buildSymmetric2[X_] := Association[
+        Table[{iIter, jIter} -> X[[iIter,jIter]], {iIter, Dim}, {jIter, iIter, Dim}]
+    ];
+
+    gUU = Inverse[gdd];
+
+    Agdd = buildSymmetric2[gdd];
+    AgUU = buildSymmetric2[gUU];
+
+    Agdd = KeySelect[Agdd, Agdd[#] =!= 0 &];
+    AgUU = KeySelect[AgUU, AgUU[#] =!= 0 &];
+
+    globalBundle = <|
+    	"GeometryID" -> id,
+        "coord" -> coord,
+        "ds2" -> ds2,
+	"GlobalSync"-> {},
+        "Tensors" -> <|
+            "gdd" -> Agdd,
+            "gUU" -> AgUU
+        |>
+    |>;
+];
+
+
+Clear[InitGlobalBundle];
+
+InitGlobalBundle[gddIN_:"Global", coordIN_:"Global"] := Module[
+    {gddint, coordint, id},
+
+    coordint = ResolveGlobal[coordIN, coord];
+    gddint   = ResolveGlobal[gddIN, gdd];
+
+    id = GlobalGeometryID[gddint, coordint];
+
+    If[(!AssociationQ[globalBundle]) || (Lookup[globalBundle, "GeometryID", None] =!= id),
+    	Print["Initialize New Global Bundle"];
+    	BuildGlobalBundle[gddint, coordint, id]
+    ];
+
+    globalBundle
+];
+
+Clear[SetGlobalTensor];
+SetAttributes[SetGlobalTensor, HoldFirst];
+
+SetGlobalTensor[symbol_, tensorName_] := Module[{},
+    If[
+        KeyExistsQ[globalBundle["Tensors"], tensorName] && Not[MemberQ[globalBundle["GlobalSync"], tensorName]],
+        symbol = GetTensorArray[globalBundle, tensorName];
+	AppendTo[globalBundle["GlobalSync"], tensorName];
+    ];
+];
+
+Clear[SyncGlobalTensors];
+
+SyncGlobalTensors[] := Module[{},
+    SetGlobalTensor[ChrisUdd, "ChrisUdd"];
+    SetGlobalTensor[Rdd, "Rdd"];
+    SetGlobalTensor[RicciScalar, "RicciScalar"];
+];
+
+Clear[ComputeChrisUdd];
+
+ComputeChrisUdd[simp_:Identity, gddcoord_:{"Global", "Global"}] := Module[
+    {},
+    InitGlobalBundle[First[gddcoord], Last[gddcoord]];
+    PaiComputeBundleTensors[globalBundle, "ChrisUdd", simp];
+    SyncGlobalTensors[];
+];
+
 Clear[ComputeRdd];
-ComputeRdd["conf"] = <|"ComputeChris"->True|>;
 
-ComputeRdd[simp_:Identity,gddcoord_:{gdd,coord}] :=
-Module[{useglobalgdd,TrChrisd,term1,term2,term3,term4,auxterm1f,auxterm2f,initialTime,valuesimp,gddint,coordint,Dim},
-	initialTime=SessionTime[];
-	Clear[Rdd];
-	useglobalgdd = True;
-	
-	If[
-	gddcoord=!={gdd,coord},
-		Print["** Computing Rdd with metric in arguments"];
-		useglobalgdd = False;
-		gddint=gddcoord[[1]];
-		coordint=gddcoord[[2]];
-		Clear[ChrisUdd];
-		ComputeChrisUdd[simp,gddcoord];
-		,
-			gddint=gdd;
-			coordint=coord
-	];
-	
-	If[
-	(ComputeRdd["conf"]["ComputeChris"])&&useglobalgdd,
-		Clear[ChrisUdd,Rdd];
-		ComputeChrisUdd[simp,gddcoord];
-	];
-	
-	Dim=Length@coordint;
-	
-	TrChrisd=simp[TensorContract[ChrisUdd,{{1,2}}]];
-	term3=simp[TrChrisd . ChrisUdd];
-	term4=simp[Activate@TensorContract[Inactive[TensorProduct][ChrisUdd,ChrisUdd],{{1,5},{3,4}}]];
-	auxterm1f[iiinx_,jj_]:=simp[Sum[D[ChrisUdd[[kk,iiinx,jj]],coordint[[kk]]],{kk,Dim}]];
-	term1=Array[auxterm1f,{Dim,Dim}];
-	auxterm2f[iiinx_,jj_]:=simp[D[TrChrisd[[jj]],coordint[[iiinx]]]];
-	term2=Array[auxterm2f,{Dim,Dim}];
-	
-	Rdd=simp[term1-term2+term3-term4];
-	
-	If[
-	simp===Identity,
-		valuesimp="without simplification.",
-			valuesimp="with simplification."
-	];
-	Return[Print[Style["Rdd",Bold],   "   ",$defRicciTensor,"  Ricci tensor computed in ",SessionTime[]-initialTime," sec. ",valuesimp]]
+ComputeRdd[simp_:Identity, gddcoord_:{"Global", "Global"}] :=Module[
+	{},
+	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
+    	PaiComputeBundleTensors[globalBundle, "Rdd", simp];
+	SyncGlobalTensors[];
 ];
 
-ComputeRicciScalar[simp_:Identity,gddcoord_:{gdd,coord}]:=
-Module[{InitialTime,valuesimp,gddint,coordint,gUUint},
-	If[
-	gddcoord=!={gdd,coord},
-		gddint=gddcoord[[1]];
-		coordint=gddcoord[[2]],
-			gddint=gdd;coordint=coord
+ComputeRicciScalar[simp_:Identity, gddcoord_:{"Global", "Global"}] := Module[
+	{},
+	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
+    	PaiComputeBundleTensors[globalBundle, "RicciScalar", simp];
+	SyncGlobalTensors[];
 	];
-	Clear[ChrisUdd,Rdd];
-	ComputeRdd[simp,gddcoord];
-	gUUint=Inverse[gddint];
-	InitialTime=SessionTime[];
-	RicciScalar=simp[Activate@TensorContract[Inactive[TensorProduct][Rdd,gUUint],{{1,3},{2,4}}]];
-	If[
-	simp===Identity,
-		valuesimp="without simplification.",
-			valuesimp="with simplification."
-	];
-	Return[Print[Style["RicciScalar",Bold],   "   ",$defRicciScalar,"  Ricci scalar computed in ",SessionTime[]-InitialTime," sec. ",valuesimp]];
-];
 
 "Here we consider the definition of the contraction operator Contracione that take a p-form in the vielbein basis an 
 return a (p-1)-form with a Lorentz index attaced at the beggining."
@@ -790,20 +796,6 @@ auxobject=g;
 Do[If[listdnup[[II]]===dn,auxobject=Subscript[auxobject,index[[II]]],auxobject=Superscript[auxobject,index[[II]]]],{II,Length@index}];
 Return[auxobject]
 ]
-
-$chrisdef=
-Row[{PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Mu]","\[Nu]","\[Rho]"}],"=",1/2,PrintIndices["g",{up,up},{"\[Mu]","\[Lambda]"}],PrintIndices["(\[PartialD]",{dn},{"\[Nu]"}],
-PrintIndices["g",{dn,dn},{"\[Rho]","\[Lambda]"}],"+",PrintIndices["\[PartialD]",{dn},{"\[Rho]"}],PrintIndices["g",{dn,dn},{"\[Nu]","\[Lambda]"}],"-",PrintIndices["\[PartialD]",{dn},{"\[Lambda]"}],
-PrintIndices["g",{dn,dn},{"\[Nu]","\[Rho]"}],")"}];
-
-$defRicciTensor=
-Row[{PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}]," = ",PrintIndices["\[PartialD]",{dn},{"\[Rho]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Mu]","\[Nu]"}],"-",
-PrintIndices["\[PartialD]",{dn},{"\[Mu]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Rho]","\[Nu]"}],"+",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Rho]","\[Lambda]"}],
-PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Mu]","\[Nu]"}],"-",PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Rho]","\[Mu]","\[Lambda]"}],PrintIndices["\[CapitalGamma]",{up,dn,dn},{"\[Lambda]","\[Rho]","\[Nu]"}]}];
-$defRicciScalar=
-Row[{"R"," = ",PrintIndices["R",{dn,dn},{"\[Mu]","\[Nu]"}],PrintIndices["g",{up,up},{"\[Mu]","\[Nu]"}]}];
-	
-	
 	
 (*==========================================================================================================================================*)
 
