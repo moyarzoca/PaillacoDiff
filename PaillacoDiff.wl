@@ -32,7 +32,7 @@ ComputeRicciScalar::usage = "ComputeRicciScalar[] computes the Ricci scalar."
 SetVielbein::usage = "SetVielbein[eIN, eta] sets up the vielbein basis and defines global variables."
 ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spin connection 1-form."
 
-InitMetricBundle::usage = "InitializeBundle[bundle] initialises a bundle Association."
+InitMetricTools::usage = "InitMetricTools[bundle] constructs Hstar, FormSquare, and FormSquaredd associated with the bundle.";
 TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
 RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
 PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
@@ -42,8 +42,7 @@ PaiComputeChrisUdd::usage = "PaiComputeChrisUdd[bundle] computes Christoffel sym
 PaiComputeRdddd::usage = "PaiComputeRdddd[bundle] computes the Riemann tensor."
 PaiComputeRdd::usage = "PaiComputeRdd[bundle] computes the Ricci tensor."
 PaiComputeRicciScalar::usage = "PaiComputeRicciScalar[bundle] computes the Ricci scalar."
-PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors up to a requested level."
-
+PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors and derived geometric structures up to the requested level. PaiComputeBundleTensors[bundle, \"levels\"] returns the available levels for the bundle."
 BuildHodge::usage = "BuildHodge[bundle] builds a Hodge star function for a bundle."
 BuildHodgeMetric::usage = "BuildHodgeMetric[bundle] builds a coordinate-basis Hodge star function."
 BuildHodgeVielbein::usage = "BuildHodgeVielbein[bundle] builds a vielbein-basis Hodge star function."
@@ -875,11 +874,20 @@ PaiCovD[bundle_, tensor_, indices_String] :=
 	];
 
 SetAttributes[GetTensorArray, HoldFirst];
-GetTensorArray[bundle_, tensorName_, simp_:Automatic] := 
-	Module[{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor},
-		Dim = Length[bundle["coord"]];
-		PaiComputeBundleTensors[bundle, tensorName, simp];
-		
+GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
+	{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor,
+	Tensors, level},
+
+	Dim = Length[bundle["coord"]];
+	Tensors = Lookup[bundle, "Tensors", <||>];
+	level = If[MemberQ[{"gdd", "gUU"}, tensorName],
+		"metric",
+			tensorName];
+
+	If[Not[KeyExistsQ[Tensors, tensorName]],
+		PaiComputeBundleTensors[bundle, level, simp];
+	];
+
 		PaiTensor = bundle["Tensors", tensorName];
 		
 		If[
@@ -1106,24 +1114,26 @@ PaiComputeRicciScalar[bundle_Association] :=
 			------------------------------------
 *)
 
-PaiComputeBundleTensors::usage = 
-	"
-	PaiComputeBundleTensors[bundle, level, simp_:]
-	levels  ->    {metric, ChrisUdd, Rdddd, Rdd, RicciScalar}  
-	Default -> Rdddd
-	Usage   -> Mutate bundle according to level
-	"
+Clear[PaiComputeBundleTensors];
 
-ClearAll[PaiComputeBundleTensors];
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
-PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Automatic] := Module[{}, 
+
+PaiComputeBundleTensors[bundle_, "levels"] := Which[
+    KeyExistsQ[bundle, "ds2"],
+        {"metric", "metricTools", "ChrisUdd", "Rdddd", "Rdd", "RicciScalar"},
+    KeyExistsQ[bundle, "eU"],
+        {"basic", "spinConnection", "curvatureForm", "Rdddd", "Rdd", "RicciScalar"}
+];
+
+PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Automatic] := Module[
+	{}, 
 	Which[
 	KeyExistsQ[bundleIN, "ds2"],
 		PaiComputeBundleTensorsMetric[bundleIN, level, simp],
 	KeyExistsQ[bundleIN, "eU"],
 		PaiComputeBundleTensorsVielbein[bundleIN, level, simp],
 	True,
-		Print["[ Aborting ] netierh ds2 or eU was provided"];
+		Print["[ Aborting ] neither ds2 nor eU was provided"];
 		Abort[];
 	];
 ];
@@ -1190,7 +1200,7 @@ Module[{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicci
 ClearAll[PaiComputeBundleTensorsMetric];
 SetAttributes[PaiComputeBundleTensorsMetric, HoldFirst];
 PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Module[
-	{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
+	{Tensors, needMetric, needMetricTools, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
 	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar,
 	simpMetric, simpChris, simpRiem, simpRicci, simpR},
 
@@ -1211,6 +1221,7 @@ PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Mo
 	Tensors = Lookup[bundle, "Tensors", <||>];
 
 	needMetric   = Not[KeyExistsQ[Tensors, "gdd"]] || Not[KeyExistsQ[Tensors, "gUU"]];
+	needMetricTools = needMetric || Not[KeyExistsQ[bundle, "Hstar"]] || Not[KeyExistsQ[bundle, "FormSquare"]] || Not[KeyExistsQ[bundle, "FormSquaredd"]];
 	needChris    = Not[KeyExistsQ[Tensors, "ChrisUdd"]] && MemberQ[{"RicciScalar","ChrisUdd", "Rdddd", "Rdd"}, level];
 	needRiemann  = Not[KeyExistsQ[Tensors, "Rdddd"]] && MemberQ[{"RicciScalar","Rdddd", "Rdd"}, level];
 	needRicci    = Not[KeyExistsQ[Tensors, "Rdd"]] && MemberQ[{"RicciScalar","Rdd"}, level];
@@ -1224,14 +1235,24 @@ PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Mo
 		AgUU = Map[simpMetric, AgddgUU["gUU"]];
 		Tensors = Join[Tensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
-		InitMetricBundle[bundle, simp];
 	];
 	
 	If[level === "metric", 
 		bundleIN = bundle;
 		Return[]
 	];
-	
+
+	(* --- Metric bundle tools --- *)
+	If[needMetricTools,
+		Print["** Computing metricTools : Hstar, FormSquare, FormSquaredd"];
+		InitMetricTools[bundle, simpMetric];
+	];
+
+	If[level === "metricTools", 
+		bundleIN = bundle;
+		Return[]
+	];
+
 	(* --- Christoffel --- *)
 	If[needChris,
 		Print["** Computing Christoffel"];
@@ -1383,9 +1404,9 @@ InitVielbeinBundle[vielbeinBundle_, simp_:PaiSimplify] := Module[
 
 	];
 
-SetAttributes[InitMetricBundle, HoldFirst];
+SetAttributes[InitMetricTools, HoldFirst];
 
-InitMetricBundle[bundle_, simp_:PaiSimplify] := Module[{ToClear, FormSquareTools},
+InitMetricTools[bundle_, simp_:PaiSimplify] := Module[{ToClear, FormSquareTools},
     bundle = Association[bundle];
 	If[KeyExistsQ[bundle, "constants"],
     	Do[d[cIter]=0, {cIter, bundle["constants"]}];
