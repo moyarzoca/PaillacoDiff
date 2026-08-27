@@ -55,10 +55,11 @@ PaiComputeRicciScalarFlat::usage = "PaiComputeRicciScalarFlat[bundle] computes R
 
 (* ---------- Public globals ---------- *)
 
-PaiNonCommutativeScalarQ::usage =
-  "PaiNonCommutativeScalarQ[expr] tests whether expr contains a registered noncommutative scalar coefficient.";
-PaiRegisterNonCommutativeScalarQ::usage =
-  "PaiRegisterNonCommutativeScalarQ[test] registers a predicate test[expr] used by Wedge to detect noncommutative scalar coefficients.";
+PaiNonCommutativeScalarQ::usage = "PaiNonCommutativeScalarQ[expr] tests whether expr contains a registered noncommutative scalar coefficient.";
+PaiRegisterNonCommutativeScalarQ::usage = "PaiRegisterNonCommutativeScalarQ[test] registers a predicate test[expr] used by Wedge to detect noncommutative scalar coefficients.";
+
+PaiSimplify::usage = "PaiSimplify[expr] applies PaillacoDiff's default lightweight algebraic simplification.";
+$UsePaiSimplify::usage = "$UsePaillacoSimplify controls whether PaiSimplify applies automatic simplification. Default is True.";
 
 coord::usage = "List of coordinate variables."
 Dim::usage = "Spacetime dimension."
@@ -411,7 +412,7 @@ RaiseAllSparse[FformSparse_SparseArray, gUU_SparseArray, formdegree_Integer] :=
 
 Clear[BuildSquaresTools];
 SetAttributes[BuildSquaresTools, HoldFirst];
-BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, dxToe},
+BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis, dxToe},
 	Which[
 	KeyExistsQ[bundle, "ds2"]===True,
 		PaiComputeBundleTensors[bundle, "metric", simp];
@@ -440,7 +441,7 @@ BuildSquaresTools[bundle_, simp_:Simplify] := Module[{gUU, eta, etainv, basis, d
 
 
 Clear[FormSquare];
-FormSquare[Xform_, gUUIN_:"Global", simp_:Identity, basisIN_:"Global"] :=
+FormSquare[Xform_, gUUIN_:"Global", simp_:PaiSimplify, basisIN_:"Global"] :=
 Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
 	FformValues, FtensorValues, basisint,Dim},
@@ -475,7 +476,7 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 Clear[FormSquaredd];
 FormSquaredd[0,__]:=0
 
-FormSquaredd[Xform_, gintUUinput_:"Global", simp_:Identity, basisIN_:"Global"] :=
+FormSquaredd[Xform_, gintUUinput_:"Global", simp_:PaiSimplify, basisIN_:"Global"] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
 	basisint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
 	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
@@ -520,7 +521,7 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 
 Clear[Hstar];
-Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:Identity] := 
+Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:PaiSimplify] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
 		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint, baseint},
 
@@ -619,6 +620,20 @@ Computegdd[bundle_Association] :=
 		Return[update];
 		
 	];
+
+$UsePaiSimplify = True;
+
+trigSimp = {
+    x_.*Cos[h_]^2 + x_.*Sin[h_]^2 :> x,
+    x_.*Cosh[h_]^2 - x_.*Sinh[h_]^2 :> x
+};
+
+PaiSimplify[expr_] := If[
+	TrueQ[$UsePaiSimplify],
+		Factor[expr /. trigSimp] /. trigSimp,
+			expr
+    ];
+
 Clear[GlobalGeometryID];
 
 GlobalGeometryID[gdd_, coord_] := Hash[HoldComplete[{gdd, coord}]];
@@ -695,7 +710,7 @@ SyncGlobalTensors[] := Module[{},
 
 Clear[ComputeChrisUdd];
 
-ComputeChrisUdd[simp_:Identity, gddcoord_:{"Global", "Global"}] := Module[
+ComputeChrisUdd[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] := Module[
     {},
     InitGlobalBundle[First[gddcoord], Last[gddcoord]];
     PaiComputeBundleTensors[globalBundle, "ChrisUdd", simp];
@@ -704,14 +719,14 @@ ComputeChrisUdd[simp_:Identity, gddcoord_:{"Global", "Global"}] := Module[
 
 Clear[ComputeRdd];
 
-ComputeRdd[simp_:Identity, gddcoord_:{"Global", "Global"}] :=Module[
+ComputeRdd[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] :=Module[
 	{},
 	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
     	PaiComputeBundleTensors[globalBundle, "Rdd", simp];
 	SyncGlobalTensors[];
 ];
 
-ComputeRicciScalar[simp_:Identity, gddcoord_:{"Global", "Global"}] := Module[
+ComputeRicciScalar[simp_:PaiSimplify, gddcoord_:{"Global", "Global"}] := Module[
 	{},
 	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
     	PaiComputeBundleTensors[globalBundle, "RicciScalar", simp];
@@ -732,7 +747,7 @@ inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]] := x*y*(KroneckerDelta[j,k]*Wed
 Contractione[X_, DimIn_:Dim] := Table[inP[e[a1111],X],{a1111,DimIn}];
 
 ClearAll[SetVielbein];
-SetVielbein[eIN_,flatmetric_,simp_:Identity] := Module[{},
+SetVielbein[eIN_,flatmetric_,simp_:PaiSimplify] := Module[{},
 	ClearAll[\[Eta]dd,\[Eta]UU,eTodx,dxToe,eBasis,gdd,gUU,eamuUd,eamudU];
 	\[Eta]dd=flatmetric;
 	\[Eta]UU=Inverse[\[Eta]dd];
@@ -764,7 +779,7 @@ SetVielbein[eIN_,flatmetric_,simp_:Identity] := Module[{},
 	]
 ];
 
-ComputeSpinConnection[eIN_,flatmetric_,simp_:Identity]:=
+ComputeSpinConnection[eIN_,flatmetric_,simp_:PaiSimplify]:=
 Module[{secondterm\[Omega],GUdd},
 	SetVielbein[eIN,flatmetric];
 	If[
@@ -860,7 +875,7 @@ PaiCovD[bundle_, tensor_, indices_String] :=
 	];
 
 SetAttributes[GetTensorArray, HoldFirst];
-GetTensorArray[bundle_, tensorName_, simp_:Identity] := 
+GetTensorArray[bundle_, tensorName_, simp_:PaiSimplify] := 
 	Module[{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor},
 		Dim = Length[bundle["coord"]];
 		PaiComputeBundleTensors[bundle, tensorName, simp];
@@ -1101,7 +1116,7 @@ PaiComputeBundleTensors::usage =
 
 ClearAll[PaiComputeBundleTensors];
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
-PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Identity] := Module[{}, 
+PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Automatic] := Module[{}, 
 	Which[
 	KeyExistsQ[bundleIN, "ds2"],
 		PaiComputeBundleTensorsMetric[bundleIN, level, simp],
@@ -1116,7 +1131,7 @@ PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Identity] := Mod
 ClearAll[PaiComputeBundleTensorsVielbein];
 SetAttributes[PaiComputeBundleTensorsVielbein, HoldFirst];
 
-PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:Identity] := 
+PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:PaiSimplify] := 
 Module[{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicciScalar},
 	bundle = bundleIN;
 
@@ -1174,9 +1189,23 @@ Module[{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicci
 
 ClearAll[PaiComputeBundleTensorsMetric];
 SetAttributes[PaiComputeBundleTensorsMetric, HoldFirst];
-PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Identity] := 
-Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
-	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar},
+PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Module[
+	{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
+	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar,
+	simpMetric, simpChris, simpRiem, simpRicci, simpR},
+
+	If[simp === Automatic,
+		simpMetric = PaiSimplify;
+		simpChris  = PaiSimplify;
+		simpRiem   = Identity;
+		simpRicci  = Identity;
+		simpR      = Identity,
+			simpMetric = simp;
+			simpChris  = simp;
+			simpRiem   = simp;
+			simpRicci  = simp;
+			simpR      = simp
+	];
 	
 	bundle = bundleIN;
 	Tensors = Lookup[bundle, "Tensors", <||>];
@@ -1191,8 +1220,8 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	If[needMetric,
 		Print["** Computing metric"];
 		AgddgUU = PaiComputeMetric[bundle];
-		Agdd = Map[simp, AgddgUU["gdd"]];
-		AgUU = Map[simp, AgddgUU["gUU"]];
+		Agdd = Map[simpMetric, AgddgUU["gdd"]];
+		AgUU = Map[simpMetric, AgddgUU["gUU"]];
 		Tensors = Join[Tensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
 		InitMetricBundle[bundle, simp];
@@ -1207,7 +1236,7 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	If[needChris,
 		Print["** Computing Christoffel"];
 		AChrisUdd = PaiComputeChrisUdd[bundle];
-		AChrisUdd = Map[simp, AChrisUdd];
+		AChrisUdd = Map[simpChris, AChrisUdd];
 		Tensors = AssociateTo[Tensors, "ChrisUdd" -> AChrisUdd];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
 	];
@@ -1221,7 +1250,7 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	If[needRiemann,
 		Print["** Computing Riemann"];
 		ARiemdddd = PaiComputeRdddd[bundle];
-		ARiemdddd = Map[simp, ARiemdddd];
+		ARiemdddd = Map[simpRiem, ARiemdddd];
 		Tensors = AssociateTo[Tensors, "Rdddd" -> ARiemdddd];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
 	];
@@ -1235,7 +1264,7 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	If[needRicci,
 		Print["** Computing Ricci tensor"];
 		ARicdd = PaiComputeRdd[bundle];
-		ARicdd = Map[simp, ARicdd];
+		ARicdd = Map[simpRicci, ARicdd];
 		Tensors = AssociateTo[Tensors, "Rdd" -> ARicdd];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
 	];
@@ -1247,7 +1276,7 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 	(* --- RicciScalar --- *)
 	If[needRicciScalar,
 		Print["** Computing RicciScalar"];
-		RicciScalar = simp[PaiComputeRicciScalar[bundle]];
+		RicciScalar = simpR[PaiComputeRicciScalar[bundle]];
 		Tensors = AssociateTo[Tensors, "RicciScalar" -> RicciScalar];
 		bundle = AssociateTo[bundle, "Tensors" -> Tensors];
 	];
@@ -1269,7 +1298,7 @@ Module[{Tensors, needMetric, needChris, needRiemann, AgddgUU, Agdd, AgUU,
 
 Clear[BuildHodge];
 SetAttributes[BuildHodge, HoldFirst];
-BuildHodge[bundle_, simp_:Simplify] := Module[{},
+BuildHodge[bundle_, simp_:PaiSimplify] := Module[{},
 	Which[
 	KeyExistsQ[bundle, "ds2"],
 		Return[BuildHodgeMetric[bundle, simp]],
@@ -1281,7 +1310,7 @@ BuildHodge[bundle_, simp_:Simplify] := Module[{},
 ];
 
 SetAttributes[BuildHodgeMetric, HoldFirst];
-BuildHodgeMetric[bundle_, simp_:Simplify] := 
+BuildHodgeMetric[bundle_, simp_:PaiSimplify] := 
 	Module[{gdd,sqrtdetg,needMetric,Tensors,Dim,gddMap,gUU,gUUMap,coord},
 		coord = bundle["coord"];
 		Dim = Length[coord];
@@ -1303,7 +1332,7 @@ BuildHodgeMetric[bundle_, simp_:Simplify] :=
 			]];
 	];
 
-BuildHodgeVielbein[bundle_, simp_:Simplify] := Module[{basis, eta, etainv, sqrtdeteta},
+BuildHodgeVielbein[bundle_, simp_:PaiSimplify] := Module[{basis, eta, etainv, sqrtdeteta},
 	basis = bundle["basis"];
 	eta = DiagonalMatrix[bundle["signature"]]; 
 	etainv = Inverse[eta];
@@ -1331,7 +1360,7 @@ ConstructContraction[vielbeinBundle_] := Module[
 
 SetAttributes[InitVielbeinBundle, HoldFirst];
 
-InitVielbeinBundle[vielbeinBundle_, simp_:Simplify] := Module[
+InitVielbeinBundle[vielbeinBundle_, simp_:PaiSimplify] := Module[
 	{eTodx, dxToe, symbs, eU, contraction, coordbasis, hstar},
 	vielbeinBundle = Association[vielbeinBundle];
 	symbs = vielbeinBundle["basis"];
@@ -1356,7 +1385,7 @@ InitVielbeinBundle[vielbeinBundle_, simp_:Simplify] := Module[
 
 SetAttributes[InitMetricBundle, HoldFirst];
 
-InitMetricBundle[bundle_, simp_:Identity] := Module[{ToClear, FormSquareTools},
+InitMetricBundle[bundle_, simp_:PaiSimplify] := Module[{ToClear, FormSquareTools},
     bundle = Association[bundle];
 	If[KeyExistsQ[bundle, "constants"],
     	Do[d[cIter]=0, {cIter, bundle["constants"]}];
@@ -1369,7 +1398,7 @@ InitMetricBundle[bundle_, simp_:Identity] := Module[{ToClear, FormSquareTools},
 
 Clear[PaiComputeSpinConnection];
 SetAttributes[PaiComputeSpinConnection, HoldFirst];
-PaiComputeSpinConnection[frameBundle_, simp_:Identity] := Module[
+PaiComputeSpinConnection[frameBundle_, simp_:PaiSimplify] := Module[
 	{eta, vielbein, deU, contraction, idedU, idedd, iideddU, iideddd, omegadd, symbs, Dim, evald, omegaUd},
 	frameBundle = Association[frameBundle];
 	eta = DiagonalMatrix[frameBundle["signature"]];
@@ -1389,7 +1418,7 @@ PaiComputeSpinConnection[frameBundle_, simp_:Identity] := Module[
 	
 Clear[PaiComputeCurvatureForm];
 SetAttributes[PaiComputeCurvatureForm, HoldFirst];
-PaiComputeCurvatureForm[frameBundle_, simp_: Identity] := Module[
+PaiComputeCurvatureForm[frameBundle_, simp_: PaiSimplify] := Module[
 	{eta, omegaUd, vielbein, RRUd, omegadd},
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	omegadd = frameBundle["spinConnection", "dd"];
@@ -1402,7 +1431,7 @@ PaiComputeCurvatureForm[frameBundle_, simp_: Identity] := Module[
 
 Clear[PaiComputeRddddFlat];
 SetAttributes[PaiComputeRddddFlat, HoldFirst];
-PaiComputeRddddFlat[frameBundle_, simp_: Identity] := Module[
+PaiComputeRddddFlat[frameBundle_, simp_: PaiSimplify] := Module[
 	{eta, RUd, contraction, RddUd, RUddd, Rdddd},
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	RUd = frameBundle["curvatureForm", "Ud"];
@@ -1415,7 +1444,7 @@ PaiComputeRddddFlat[frameBundle_, simp_: Identity] := Module[
 
 Clear[PaiComputeRddFlat];
 SetAttributes[PaiComputeRddFlat, HoldFirst];
-PaiComputeRddFlat[frameBundle_, simp_: Identity] := Module[
+PaiComputeRddFlat[frameBundle_, simp_: PaiSimplify] := Module[
 	{eta, etainv, Rdddd, RUddd, Rdd, FlatTensors},
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	etainv = Inverse[eta];
@@ -1427,7 +1456,7 @@ PaiComputeRddFlat[frameBundle_, simp_: Identity] := Module[
 
 Clear[PaiComputeRicciScalarFlat];
 SetAttributes[PaiComputeRicciScalarFlat, HoldFirst];
-PaiComputeRicciScalarFlat[frameBundle_, simp_: Identity] := Module[
+PaiComputeRicciScalarFlat[frameBundle_, simp_: PaiSimplify] := Module[
 	{eta, etainv, Rdd, RUd, RicciScalar, FlatTensors},
 	eta = DiagonalMatrix[frameBundle["signature"]];
 	etainv = Inverse[eta];
