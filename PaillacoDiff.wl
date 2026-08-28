@@ -893,7 +893,7 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 		"omegadd",
 			{"Forms", "omegadd", "spinConnection"},
 		"Rformdd",
-			{"Forms", "Rdd", "cuvatureForm"},
+			{"Forms", "Rdd", "curvatureForm"},
 
 		"RicciScalar",
 			Which[
@@ -922,9 +922,9 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 		Return[PaiTensor]
 	];
 
-	TensorComponents[indices__] :=
-		PaiComponent[PaiTensor, {indices}, name];
-
+	TensorComponents[indices__] := PaiComponent[PaiTensor, {indices},
+		If[tensorName === "Rformdd", "RFormdd", name]
+	];
 	DimensionsTensor =
 		ConstantArray[Dim, tensorRank[name]];
 
@@ -940,24 +940,27 @@ PaiComponent[PaiTensor_, {indices__}, tensorName_] :=
 	Which[
 	(tensorName === "Rdd")||(tensorName === "gdd")||(tensorName === "gUU"),
 		PaiComponent2sym[PaiTensor, {indices}],
+
 	tensorName === "ChrisUdd",
 		PaiComponent3symLast[PaiTensor, {indices}],
+
 	tensorName === "Rdddd",
 		PaiComponent4Riem[PaiTensor, {indices}],
+
 	tensorName === "omegadd",
 		PaiComponent2anti[PaiTensor, {indices}],
+
 	tensorName === "RFormdd",
 		PaiComponent2anti[PaiTensor, {indices}],
+
 	True,
 		Message[PaiComponent::unk, tensorName]
 	];
-
 tensorRank = <|
 	"gdd" -> 2, "gUU" -> 2, "Rdd" -> 2,
 	"ChrisUdd" -> 3,
 	"Rdddd" -> 4,
-	"omegadd"->2,
-	"Rflatdd"->2
+	"omegadd"->2
 	|>;
 
 PaiComponent2sym[Xab_Association, {i_, j_}] := 
@@ -1181,7 +1184,7 @@ ClearAll[PaiComputeBundleTensorsVielbein];
 SetAttributes[PaiComputeBundleTensorsVielbein, HoldFirst];
 
 PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:PaiSimplify] := Module[
-	{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicciScalar, FlatTensors,
+	{bundle, needSpinConnection, needCurvature, needRdddd, needRdd, needRicciScalar, FlatTensors, Forms,
 	simpVielbein, simpSpin, simpCurv, simpRiem, simpRicci, simpR},
 	bundle = bundleIN;
 
@@ -1205,8 +1208,9 @@ PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:PaiSimpl
 
 	If[level === "basic", Return[]];
 
-	needSpinConnection   = Not[KeyExistsQ[bundle, "spinConnection"]];
-	needCurvature  = Not[KeyExistsQ[bundle, "curvatureForm"]];
+	Forms = Lookup[bundle,"Forms", <| |>];
+	needSpinConnection   = Not[KeyExistsQ[Forms, "omegadd"]];
+	needCurvature  = Not[KeyExistsQ[Forms, "Rdd"]];
 	FlatTensors = Lookup[bundle,"FlatTensors", <| |>];
 	needRdddd  = Not[KeyExistsQ[FlatTensors, "Rdddd"]];
 	needRdd = Not[KeyExistsQ[FlatTensors, "Rdd"]];
@@ -1491,9 +1495,10 @@ GetFlatMetric[bundle_] := If[
 Clear[PaiComputeSpinConnection];
 SetAttributes[PaiComputeSpinConnection, HoldFirst];
 PaiComputeSpinConnection[frameBundle_, simp_:PaiSimplify] := Module[
-	{eta, deU, contraction, idedU, idedd, iideddU, iideddd, omegadd, symbs, Dim, evald, omegaUd, a, b, c, Aomegadd, Forms, omega, k},
+	{eta, deU, symbs, Dim, a, b, c, k,
+	Aomegadd, Forms, omega, deDNA, CUdd, Cddd},
 
-	frameBundle = Association[frameBundle];
+ 	frameBundle = Association[frameBundle];
 	eta = GetFlatMetric[frameBundle];
 	Dim = Length[frameBundle["basis"]];
 	symbs = frameBundle["basis"];
@@ -1501,12 +1506,11 @@ PaiComputeSpinConnection[frameBundle_, simp_:PaiSimplify] := Module[
 	deU = Table[d[e], {e, symbs}];
 	deU = simp[deU];
 
-	deDNA[a_] := deDNA[a] = (Association[
-            Map[
-                #[[2]] -> #[[1]] &,
-                DNAofForm[deU[[a]], symbs]
-            ]
-        ]);
+	deDNA[a_] := deDNA[a] = If[deU[[a]]===0, 
+		<| |>,
+		Association[
+		Map[#[[2]] -> #[[1]] &, DNAofForm[deU[[a]], symbs]]]
+        ];
 
 	CUdd[a_,b_,c_] := Which[
 	    b < c,
@@ -1553,8 +1557,7 @@ PaiComputeCurvatureForm[frameBundle_, simp_: PaiSimplify] := Module[
 	Aomegadd = frameBundle["Forms", "omegadd"];
 	Dim = Length[frameBundle["basis"]];
 
-	omegadd[a_,b_] :=
-		PaiComponent2anti[Aomegadd, {a,b}];
+	omegadd[a_,b_] := PaiComponent2anti[Aomegadd, {a,b}];
 	etaUU = Inverse[eta];
 
 	Rformdd[a_,b_] := (d[omegadd[a,b]]
@@ -1593,16 +1596,12 @@ PaiComputeRddddFlat[frameBundle_, simp_:PaiSimplify] := Module[
 	ARdd = frameBundle["Forms", "Rdd"];
 	symbs = frameBundle["basis"];
 
-	RFormdd[a_,b_] :=
-		PaiComponent2anti[ARdd, {a,b}];
+	RFormdd[a_,b_] := PaiComponent2anti[ARdd, {a,b}];
 
-	RFormDNA[a_,b_] :=
-	    RFormDNA[a,b] =
-		Association[
-		    Map[
+	RFormDNA[a_,b_] := RFormDNA[a,b] = If[RFormdd[a,b]===0,
+		<| |>, Association[Map[
 			#[[2]] -> #[[1]] &,
-			DNAofForm[RFormdd[a,b], symbs]
-		    ]
+			DNAofForm[RFormdd[a,b], symbs]]]
 		];
 
 	Rdddd[a_,b_,c_,d_] := First[Lookup[RFormDNA[a,b], {{c,d}}, 0]];
