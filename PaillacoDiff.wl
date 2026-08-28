@@ -423,7 +423,7 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 		    |>
 		],
 	KeyExistsQ[bundle, "eU"]===True,
-		eta = DiagonalMatrix[bundle["signature"]];
+		eta = GetFlatMetric[bundle];
 		etainv = Inverse[eta];
 		basis = bundle["basis"];
 		dxToe = bundle["dxToe"];
@@ -1414,7 +1414,7 @@ BuildHodgeMetric[bundle_, simp_:PaiSimplify] :=
 
 BuildHodgeVielbein[bundle_, simp_:PaiSimplify] := Module[{basis, eta, etainv, sqrtdeteta},
 	basis = bundle["basis"];
-	eta = DiagonalMatrix[bundle["signature"]]; 
+	eta = GetFlatMetric[bundle]; 
 	etainv = Inverse[eta];
 	sqrtdeteta = Sqrt[-Det[eta]];
 	Return[Function[{X}, 
