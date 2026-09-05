@@ -2034,7 +2034,8 @@ AcceptableSeedTensorQ[tensorSign_] := And[#[[1]]===tensorSign[[1]],
 											 ]&;
 
 ComputeSingleRequiredTensors[tensorSign_, bundle_] := Module[
-    {usefullComputed, presentDerivatives, closestDerivatives, best, CompTensors},
+    {usefullComputed, presentDerivatives, closestDerivatives, best, CompTensors,
+    defCandidates, defSign},
 
     CompTensors = $ComputedTensors[bundle["id"]];
 	usefullComputed = KeySelect[CompTensors, AcceptableSeedTensorQ[tensorSign]];
@@ -2088,7 +2089,7 @@ ComputeRequiredTensors[requiredTensors_, bundle_]:= Module[{},
 ];
 
 FindRequiredScalars[scalars_, bundle_] := Module[
-    {},
+    {CompTensors, scalarSigns, namesInScalars},
 
     CompTensors = $ComputedTensors[bundle["id"]];
 
