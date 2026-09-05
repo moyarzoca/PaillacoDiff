@@ -863,6 +863,8 @@ Return[auxobject]
 
 TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContract[Inactive[TensorProduct][Tensors], contractIndices];
 
+TensorProductContract[tensor_, contractIndices_List] := TensorContract[tensor, contractIndices];
+
 RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
 	Module[{gUU, RaisePositions, rank, RaiseRelations, metricSequence, TensorUpPermuted, indexPermutation},
 		RaisePositions = Sort[indicesRaisePosition];
@@ -1811,6 +1813,10 @@ ParseIndex[s_String] :=
 TensorIndices[tensor_String] := Module[
     {inside, pieces, tensorIndices, derivativeIndices},
 
+    If[Not[StringContainsQ[tensor, "{"]],
+        Return[{}]
+    ];
+
     inside = First@StringCases[tensor, "{" ~~ x___ ~~ "}" :> x];
     pieces = StringSplit[inside, ";"];
     tensorIndices = Map[ParseIndex, StringSplit[First[pieces]]];
@@ -1824,7 +1830,7 @@ TensorIndices[tensor_String] := Module[
     Join[Reverse[derivativeIndices], tensorIndices]
 ];
 
-ClearAll[IndexStructure, ReadTensor, IndexedFactorQ, ReadTensorsSingleTerm];
+ClearAll[IndexStructure, ReadTensorSignature, IndexedFactorQ, ReadTensorsSingleTerm];
 
 IndexStructure[s_String] :=
     StringJoin[
@@ -1834,10 +1840,14 @@ IndexStructure[s_String] :=
         ]
     ];
 
-ReadTensor[tensor_String] := Module[
+ReadTensorSignature[tensor_String] := Module[
     {head, inside, posCD, tensorPart, derivativePart},
 
-    head = First[StringSplit[tensor, "{"]];
+    If[Not[StringContainsQ[tensor, "{"]],
+        Return[{StringTrim[tensor], "", ""}]
+    ];
+
+    head = StringTrim[First[StringSplit[tensor, "{"]]];
 
     inside = First[StringCases[tensor, "{" ~~ x___ ~~ "}" :> x]];
 
@@ -1865,12 +1875,16 @@ ReadTensorsSingleTerm[term_String] := Module[
 
 Clear[PaiDef, $DefTensors];
 $DefTensors=<||>;
+
 PaiDef[tensorDef_String] := Module[
-	{splitDef, tensor, def},
+	{splitDef, tensor, def, TensorSign},
 	splitDef = StringSplit[tensorDef, ":="];
 	tensor = splitDef[[1]];
 	def = splitDef[[2]];
-	AssociateTo[$DefTensors, ReadTensor[tensor]-><|tensor->def|>]
+    TensorSign = ReadTensorSignature[tensor];
+	AssociateTo[$DefTensors, TensorSign -><|tensor->def|>];
+    Print["** Definition created ", TensorSign]
+];
 ]
 
 
@@ -1985,16 +1999,42 @@ ComputeCovDTensor[best_, bundle_] := Module[
 	StoreComputedTensor[bundle, {bestSign[[1]], bestSign[[2]], StringJoin["d", bestSign[[3]]]}, sparseCD]
 ];
 
-ComputeSingleRequiredTensors[tensorSign_, bundle_] := Module[{usefullComputed, presentDerivatives, closestDerivatives, best},
-	usefullComputed = KeySelect[$ComputedTensors[bundle["id"]], And[#[[1]]===tensorSign[[1]],
-												 StringLength[#[[2]]]===StringLength[tensorSign[[2]]],
-												 StringLength[#[[3]]]<=StringLength[tensorSign[[3]]]
-												 ]&];
-	If[
-	usefullComputed === <||>,
-		Print["[ Aborting ] Usefull computed tensors is an empty list"];
-		Abort[]
-	];
+AcceptableSeedTensorQ[tensorSign_] := And[#[[1]]===tensorSign[[1]],
+											 StringLength[#[[2]]]===StringLength[tensorSign[[2]]],
+											 StringLength[#[[3]]]<=StringLength[tensorSign[[3]]]
+											 ]&;
+
+ComputeSingleRequiredTensors[tensorSign_, bundle_] := Module[
+    {usefullComputed, presentDerivatives, closestDerivatives, best, CompTensors},
+
+    CompTensors = $ComputedTensors[bundle["id"]];
+	usefullComputed = KeySelect[CompTensors, AcceptableSeedTensorQ[tensorSign]];
+
+	If[usefullComputed === <||>,
+		defCandidates = KeySelect[$DefTensors, AcceptableSeedTensorQ[tensorSign]];
+
+        If[defCandidates === <||>,
+            Print[
+                "[ Aborting ] Tensor ", tensorSign, " is neither computed nor defined"
+            ];
+            Abort[]
+        ];
+
+		If[Length[defCandidates] > 1,
+			Print[
+				"[ Aborting ] Multiple definitions can seed tensor ", tensorSign, ": ", Keys[defCandidates]
+			];
+			Abort[]
+		];
+
+		defSign = First[Keys[defCandidates]];
+
+		ComputeFreshTensor[defSign, bundle];
+
+		Return[ComputeSingleRequiredTensors[tensorSign, bundle]];
+
+    ];
+
 	closestDerivatives = KeyTake[usefullComputed, MaximalBy[Keys[usefullComputed], StringLength[#[[3]]] &]];
 	best = FindMostSimilarTensor[closestDerivatives, tensorSign];
 	
@@ -2018,15 +2058,41 @@ ComputeRequiredTensors[requiredTensors_, bundle_]:= Module[{},
 	, {tensor, requiredTensors}]
 ];
 
+FindRequiredScalars[scalars_, bundle_] := Module[
+    {},
+
+    CompTensors = $ComputedTensors[bundle["id"]];
+
+    scalarSigns = DeleteDuplicates @ Join[
+        Keys @ KeySelect[CompTensors, ScalarTensorQ],
+        Keys @ KeySelect[$DefTensors, ScalarTensorQ]
+    ];
+
+    namesInScalars =
+        DeleteDuplicates @ Flatten @
+            StringCases[
+                scalars,
+                RegularExpression["[A-Za-z$][A-Za-z0-9$]*"]
+            ];
+
+    Select[
+        scalarSigns,
+        MemberQ[namesInScalars, #[[1]]] &
+    ]
+];
+
+ScalarTensorQ[sign_] := sign[[2]] === "" && sign[[3]] === "";
+
 Clear[EvalScalarQuantities];
-EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[#[[1]]]&, KeySelect[ComputedTensors, And[#[[2]]==="", #[[3]]===""]&]]]
+EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[#[[1]]]&, KeySelect[ComputedTensors, ScalarTensorQ]]]
 
 Clear[PaiCompute, ComputeFreshTensor];
 
 ComputeFreshTensor[defSign_, bundle_] := Module[
 	{allDef, tensor, def, decomp, indexed, scalars, indicesToContract,
-	requiredTensors, loadedTensors, transposition, tensorSparse},
-	
+	requiredTensors, loadedTensors, transposition, tensorSparse, contracted,
+    requiredScalars, requiredAll},
+
 	allDef = $DefTensors[defSign];
 	tensor = First[Keys[allDef]];
 	def = First[Values[allDef]];
@@ -2034,15 +2100,34 @@ ComputeFreshTensor[defSign_, bundle_] := Module[
 	decomp = ReadTensorsSingleTerm[def];
 	indexed = decomp["indexed"];
 	scalars = decomp["scalars"];
+    requiredScalars = FindRequiredScalars[scalars, bundle];
+
+
 	indicesToContract = GetIndicesFromIndexed[indexed];
 	transposition = GetTranspositionElement[indexed, tensor];
-	requiredTensors = Map[ReadTensor, indexed];
-	ComputeRequiredTensors[requiredTensors, bundle];
-	loadedTensors = PaiSimplify[Map[$ComputedTensors[bundle["id"]], requiredTensors]];
+	requiredTensors = Map[ReadTensorSignature, indexed];
+
+    requiredAll = Join[requiredTensors, requiredScalars];
+
+	ComputeRequiredTensors[requiredAll, bundle];
+
 	scalars = Map[ToExpression, scalars];
 	scalars = Apply[Times, scalars]/.EvalScalarQuantities[$ComputedTensors[bundle["id"]]];
+
+    If[indexed === {},
+        StoreComputedTensor[bundle, defSign, scalars];
+        Return[scalars];
+    ];
+
+	loadedTensors = PaiSimplify[Map[$ComputedTensors[bundle["id"]], requiredTensors]];
+
+    contracted = TensorProductContract[Sequence @@ loadedTensors, indicesToContract];
+    contracted = If[transposition === {}, 
+        contracted,
+            Transpose[contracted, transposition]
+    ];
 	
-	tensorSparse = scalars*Transpose[TensorProductContract[Sequence @@ loadedTensors, indicesToContract], transposition]/. TensorProduct[aIterx_,bIterx_]:>aIterx*bIterx;
+	tensorSparse = scalars*contracted/. TensorProduct[aIterx_,bIterx_]:>aIterx*bIterx;
 	
 	StoreComputedTensor[bundle, defSign, tensorSparse];
 	
@@ -2050,6 +2135,8 @@ ComputeFreshTensor[defSign_, bundle_] := Module[
 ]
 
 SetAttributes[PaiCompute, HoldAll];
+
+PaiCompute[tensorHeadIN_, bundle_] := PaiCompute[tensorHeadIN, "", bundle];
 
 PaiCompute[tensorHeadIN_, IndxsIN_, bundle_] := Module[
 	{target, computed, defined, Indxs, tensorHead},
