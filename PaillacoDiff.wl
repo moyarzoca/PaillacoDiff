@@ -1885,6 +1885,35 @@ PaiDef[tensorDef_String] := Module[
 	AssociateTo[$DefTensors, TensorSign -><|tensor->def|>];
     Print["** Definition created ", TensorSign]
 ];
+
+PaiDef[tensor_String, tensorArray_, bundle_] := Module[
+    {tensorSign, rank, Dim, expectedDimensions},
+
+    InitComputedTensors[bundle];
+
+    tensorSign = ReadTensorSignature[tensor];
+
+    Dim = Length[bundle["coord"]];
+
+    rank = StringLength[tensorSign[[2]]] + StringLength[tensorSign[[3]]];
+
+    expectedDimensions = ConstantArray[Dim, rank];
+
+    If[
+        Dimensions[tensorArray] =!= expectedDimensions,
+        Print[
+            "[ Aborting ] Tensor ", tensor,
+            " has dimensions ", Dimensions[tensorArray],
+            ", expected ", expectedDimensions
+        ];
+        Abort[]
+    ];
+
+    StoreComputedTensor[bundle, tensorSign, tensorArray];
+
+    Print["** Tensor registered ", tensorSign];
+
+    tensorArray
 ]
 
 
