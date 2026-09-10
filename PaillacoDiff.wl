@@ -2213,6 +2213,216 @@ PaiCompute[tensorHeadIN_, IndxsIN_, bundle_] := Module[
 	]
 ]
 
+(*
+====================================================
+        Towards tree-like Compute tensors
+        generalization of Monomial computation
+====================================================
+
+    *)
+
+Clear[DecomposeDefinition];
+
+DecomposeDefinition[expr_String] := Module[
+    {str, terms, factors},
+
+    str = StripOuterParentheses[StringTrim[expr]];
+
+    If[
+        TensorLeafQ[str],
+        Return[str]
+    ];
+
+    terms = SplitTensorSum[str];
+
+    If[
+        Length[terms] > 1,
+        Return[
+            <|"plus" -> Map[DecomposeDefinition, terms]|>
+        ]
+    ];
+
+    factors = SplitTensorTimes[str];
+
+    If[
+        Length[factors] > 1,
+        Return[
+            <|"times" -> Map[DecomposeDefinition, factors]|>
+        ]
+    ];
+    
+    str
+
+    (*Print["[ Aborting ] Could not decompose expression: ", str];
+    Abort[]*)
+]
+
+Clear[TopLevelOperatorPositions];
+
+TopLevelOperatorPositions[expr_String, ops_List] := Module[
+    {chars, par = 0, cur = 0, bra = 0, positions = {}, ch},
+
+    chars = Characters[expr];
+
+    Do[
+        ch = chars[[i]];
+
+        If[
+            par === 0 && cur === 0 && bra === 0 && MemberQ[ops, ch],
+                AppendTo[positions, i]
+        ];
+
+        Switch[ch,
+            "(", par++,
+            ")", par--,
+            "{", cur++,
+            "}", cur--,
+            "[", bra++,
+            "]", bra--
+        ],
+        {i, Length[chars]}
+    ];
+
+    positions
+];
+
+Clear[BinarySignQ];
+
+BinarySignQ[chars_, i_] := Module[
+    {prev, prevChars},
+	prevChars = Reverse[Take[chars, i - 1]];
+    prev = SelectFirst[prevChars, StringTrim[#] =!= "" &, None];
+    prev =!= None && Not@MemberQ[{"+", "-", "*", "/", "^", "(", "[", "{", ",", ";"}, prev]
+];
+
+Clear[SplitTensorSum];
+
+Clear[RemoveLeadingPlus];
+
+RemoveLeadingPlus[str_String] := If[
+    StringStartsQ[str, "+"],
+    StringTrim[StringDrop[str, 1]],
+    str
+];
+
+SplitTensorSum[expr_String] := Module[
+    {str, chars, signPositions, starts, ends, terms, ranges},
+
+    str = StringTrim[expr];
+    chars = Characters[str];
+
+    signPositions = Select[
+        TopLevelOperatorPositions[str, {"+", "-"}],
+        BinarySignQ[chars, #] &
+    ];
+
+    If[signPositions === {},
+        Return[{str}]
+    ];
+
+    starts = Join[{1}, signPositions];
+    ends = Join[signPositions - 1, {StringLength[str]}];
+    ranges = Transpose[{starts, ends}];
+
+	terms = Map[StringTake[str, #] &, ranges];
+    terms = Map[StringTrim, terms];
+
+    Map[RemoveLeadingPlus, terms]
+];
+
+Clear[SplitTensorTimes];
+
+SplitTensorTimes[expr_String] := Module[
+    {str, TimesPositions, starts, ends, ranges, terms},
+
+    str = StringTrim[expr];
+
+    TimesPositions = TopLevelOperatorPositions[str, {"*"}];
+
+    If[TimesPositions === {},
+        Return[{str}]
+    ];
+
+    starts = Join[{1}, TimesPositions + 1];
+    ends = Join[TimesPositions - 1, {StringLength[str]}];
+    ranges = Transpose[{starts, ends}];
+	terms = Map[StringTake[str, #] &, ranges];
+    Map[StringTrim, terms]
+];
+
+Clear[OuterParenthesizedQ];
+
+OuterParenthesizedQ[expr_String] := Module[
+    {str, chars, depth = 0},
+
+    str = StringTrim[expr];
+
+    If[StringLength[str] < 2 || StringTake[str, 1] =!= "(" || StringTake[str, -1] =!= ")",
+        Return[False]
+    ];
+
+    chars = Characters[str];
+
+    Do[
+        Switch[
+            chars[[i]],
+            "(", depth++,
+            ")", depth--
+        ];
+
+        If[depth === 0 && i < Length[chars],
+            Return[False]
+        ],
+    {i, Length[chars]}
+    ];
+
+    depth === 0
+];
+
+Clear[StripOuterParentheses];
+
+StripOuterParentheses[expr_String] := Module[
+    {str},
+
+    str = StringTrim[expr];
+
+    While[
+        OuterParenthesizedQ[str],
+        str = StringTrim[StringTake[str, {2, -2}]]
+    ];
+
+    str
+];
+
+Clear[TensorLeafQ];
+
+TensorLeafQ[s_String] := Module[
+    {str, open, close, head, openPositions, closePositions, altern},
+
+    str = StringTrim[s];
+
+    openPositions  = StringPosition[str, "{"];
+    closePositions = StringPosition[str, "}"];
+
+    If[
+        Length[openPositions] =!= 1 || Length[closePositions] =!= 1,
+        Return[False]
+    ];
+    open = openPositions[[1, 1]];
+    close = closePositions[[1, 1]];
+
+    If[
+        open >= close || close =!= StringLength[str],
+        Return[False]
+    ];
+
+    head = StringTrim[StringTake[str, open - 1]];
+    altern = Alternatives["+", "-", "*", "/", "^","(", ")", "[", "]"];
+
+    head =!= "" && StringFreeQ[head, altern]
+]
+
+
 End[]
 
 EndPackage[]
