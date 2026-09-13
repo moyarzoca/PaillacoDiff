@@ -11,12 +11,10 @@ PolyFormQ::usage = "PolyFormQ[expr] tests whether expr is a sum of forms of diff
 
 Extractor::usage = "Extractor[F, A] extracts the coefficient of 1-form A in polyform F."
 Extractorleft::usage = "Extractorleft[F, A] extracts A from the left side of each term."
-coordcontraction::usage = "coordcontraction[X, coord] contracts X with all coordinate 1-forms."
 
 DNAofForm::usage = "DNAofForm[X] decomposes form X into {{coeff, indices}, ...}."
 SparseFromDNA::usage = "SparseFromDNA[DNA, dim, deg] converts DNA to a SparseArray."
 DNAFromSparse::usage = "DNAFromSparse[sparse] converts a SparseArray back to DNA."
-BuildSquaresTools::usage = "BuildSquaresTools[bundle] builds FormSquare/FormSquaredd closures."
 FormSquare::usage = "FormSquare[bundle][X] / FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
 FormSquaredd::usage = "FormSquaredd[bundle][X] / FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
 Hstar::usage = "Hstar[bundle][X] / Hstar[X] computes the Hodge dual of form X."
@@ -27,18 +25,12 @@ FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dens
 ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
 DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
 
-InitMetricTools::usage = "InitMetricTools[bundle] constructs Hstar, FormSquare, and FormSquaredd associated with the bundle.";
 TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
 RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
 LowerIndices::usage = "LowerIndices[sparse, bundle, positions] lower specified indices."
 PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
 GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
 PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors and derived geometric structures up to the requested level. PaiComputeBundleTensors[bundle, \"levels\"] returns the available levels for the bundle."
-PaiComputeSpinConnection::usage = "PaiComputeSpinConnection[bundle] computes spin connection in bundle."
-PaiComputeCurvatureForm::usage = "PaiComputeCurvatureForm[bundle] computes curvature 2-form."
-PaiComputeRddddFlat::usage = "PaiComputeRddddFlat[bundle] computes Riemann in flat (vielbein) basis."
-PaiComputeRddFlat::usage = "PaiComputeRddFlat[bundle] computes Ricci in flat basis."
-PaiComputeRicciScalarFlat::usage = "PaiComputeRicciScalarFlat[bundle] computes Ricci scalar in flat basis."
 
 PaiDef::usage = "PaiDef[\"T{indices}:=expression\"] defines a tensor using GRTensor-like notation.
 
@@ -85,17 +77,10 @@ Rdd::usage = "Ricci tensor R_{mu nu}."
 RicciScalar::usage = "Ricci scalar R."
 sqrtdetg::usage = "Sqrt[-det(g)]."
 
-\[Eta]dd::usage = "Flat (Minkowski) metric."
-\[Eta]UU::usage = "Inverse flat metric."
-e::usage = "Vielbein basis 1-forms e^a."
 eTodx::usage = "Rule mapping e^a to e^a_mu dx^mu."
 dxToe::usage = "Rule mapping dx^mu to e^a."
 eamuUd::usage = "Vielbein matrix e^a_mu."
 eamudU::usage = "Inverse vielbein matrix e_a^mu."
-eBasis::usage = "List of vielbein basis symbols {e[1], ..., e[Dim]}."
-
-\[Omega]Ud::usage = "Spin connection 1-form omega^a_b."
-\[Omega]dd::usage = "Spin connection omega_{ab} (both indices down)."
 
 Begin["`Private`"]
 
@@ -1890,6 +1875,20 @@ PaiComputeRicciScalarFlat[frameBundle_, simp_:PaiSimplify] := Module[
 
 (* ========================================================== *)
 
+Clear[TensorSignIndices, TensorSignDerivatives, TensorSignRank,
+    TensorSignDerivativeOrder, TensorSignAllIndices];
+
+TensorSignIndices[sign_] := Characters[sign[[2]]];
+
+TensorSignDerivatives[sign_] := Characters[sign[[3]]];
+
+TensorSignRank[sign_] := Length[TensorSignIndices[sign]];
+
+TensorSignDerivativeOrder[sign_] := Length[TensorSignDerivatives[sign]];
+
+TensorSignAllIndices[sign_] := Join[TensorSignDerivatives[sign],
+    TensorSignIndices[sign]];
+
 Clear[InitComputedTensors];
 
 $ComputedTensors = <||>;
@@ -2014,7 +2013,7 @@ PaiDef[tensorDef_String] := Module[
 
     previous = Select[
         Keys[$DefTensors], #[[1]] === TensorSign[[1]] &&
-        StringLength[#[[2]]] === StringLength[TensorSign[[2]]] &
+        TensorSignRank[#] === TensorSignRank[TensorSign] &
     ];
 
     If[
@@ -2041,8 +2040,7 @@ PaiDef[bundle_][tensor_String, tensorArray_] := Module[
     tensorSign = ReadTensorSignature[tensor];
 
     Dim = Length[bundle["coord"]];
-
-    rank = StringLength[tensorSign[[2]]] + StringLength[tensorSign[[3]]];
+    rank = TensorSignRank[tensorSign] + TensorSignDerivativeOrder[tensorSign];
 
     expectedDimensions = ConstantArray[Dim, rank];
 
@@ -2068,15 +2066,15 @@ PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray]
 Clear[AdjustIndicesPositions];
 AdjustIndicesPositions[best_, tensorSign_, bundle_]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, sparse},
 	bestSign = First[Keys[best]];
-	bestInd = bestSign[[3]]<>bestSign[[2]];
-	targetInd = tensorSign[[3]]<>tensorSign[[2]];
+	bestInd = TensorSignAllIndices[bestSign];
+	targetInd = TensorSignAllIndices[tensorSign];
 	If[bestInd === targetInd,
 		Return[]
 	];
 
     changes = MapThread[
         List,
-        {Characters[bestInd], Characters[targetInd]}
+        {bestInd, targetInd}
     ];
 
     raisePos = Flatten[Position[changes, {"d", "U"}]];
@@ -2099,14 +2097,25 @@ AdjustIndicesPositions[best_, tensorSign_, bundle_]:=Module[{bestSign, bestInd, 
 ];
 
 Clear[FindMostSimilarTensor];
-FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[{bestSign},
-	bestSign = First@MinimalBy[Keys[closests],
-		HammingDistance[
-			Characters[#[[2]] <> #[[3]]],
-			Characters[tensorSign[[2]] <> StringTake[tensorSign[[3]], -StringLength[#[[3]]]]]
-		]&
-	];
-	KeyTake[closests, {bestSign}]
+FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[
+    {signs, candidateIndices, targetIndices, distance, bestSign},
+
+    signs = Keys[closests];
+
+    candidateIndices[sign_] := Join[TensorSignIndices[sign],
+        TensorSignDerivatives[sign]
+    ];
+
+    targetIndices[sign_] := Join[
+        TensorSignIndices[tensorSign],
+        Take[TensorSignDerivatives[tensorSign], -TensorSignDerivativeOrder[sign]]
+    ];
+
+    distance[sign_] := HammingDistance[candidateIndices[sign], targetIndices[sign]];
+
+    bestSign = First[MinimalBy[signs, distance]];
+
+    KeyTake[closests, {bestSign}]
 ];
 
 Clear[ComputeCovDTensor];
@@ -2131,9 +2140,9 @@ ComputeCovDTensor[best_, bundle_] := Module[
 ];
 
 AcceptableSeedTensorQ[tensorSign_] := And[#[[1]]===tensorSign[[1]],
-											 StringLength[#[[2]]]===StringLength[tensorSign[[2]]],
-											 StringLength[#[[3]]]<=StringLength[tensorSign[[3]]]
-											 ]&;
+	TensorSignRank[#]===TensorSignRank[tensorSign],
+    TensorSignDerivativeOrder[#]<=TensorSignDerivativeOrder[tensorSign]
+]&;
 
 ComputeSingleRequiredTensors[tensorSign_, bundle_] := Module[
     {usefullComputed, closestDerivatives, best, CompTensors,
@@ -2167,11 +2176,12 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_] := Module[
 
     ];
 
-	closestDerivatives = KeyTake[usefullComputed, MaximalBy[Keys[usefullComputed], StringLength[#[[3]]] &]];
+	closestDerivatives = KeyTake[usefullComputed, MaximalBy[Keys[usefullComputed], TensorSignDerivativeOrder]
+    ];
 	best = FindMostSimilarTensor[closestDerivatives, tensorSign];
 	
     If[
-        StringLength[First[Keys[best]][[3]]] === StringLength[tensorSign[[3]]],
+        TensorSignDerivativeOrder[First[Keys[best]]] === TensorSignDerivativeOrder[tensorSign],
             AdjustIndicesPositions[best, tensorSign, bundle];
             Return[]
     ];
@@ -2213,7 +2223,7 @@ FindRequiredScalars[scalars_, bundle_] := Module[
     ]
 ];
 
-ScalarTensorQ[sign_] := sign[[2]] === "" && sign[[3]] === "";
+ScalarTensorQ[sign_] := TensorSignRank[sign] === 0 && TensorSignDerivativeOrder[sign] === 0;
 
 Clear[EvalScalarQuantities];
 EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[#[[1]]]&, KeySelect[ComputedTensors, ScalarTensorQ]]]
