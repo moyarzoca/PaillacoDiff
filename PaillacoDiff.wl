@@ -1546,7 +1546,7 @@ Clear[ValidateVielbeinBundle];
 SetAttributes[ValidateVielbeinBundle, HoldFirst];
 
 ValidateVielbeinBundle[bundle_] := Module[
-    {coord, basis, eU, allowedDiffs, diffs, invalid, lambda, scaled, eMatrix},
+    {coord, basis, eU, allowedDiffs, diffs, invalid, lambda, scaled, eMatrix, homogen},
 
     If[
         !And[
@@ -1596,6 +1596,13 @@ ValidateVielbeinBundle[bundle_] := Module[
             "[ Aborting ] Each vielbein must be linear in d[coord]"
         ];
         Abort[]
+    ];
+
+    If[!KeyExistsQ[bundle, "eta"] && !KeyExistsQ[bundle, "signature"],
+            Print[
+            "** [ Observation ] No \"eta\" metric or flat signature provided. ",
+            "Using mostly-plus signature (-,+,...,+)"
+            ];  
     ];
 
     True
@@ -1664,10 +1671,17 @@ PaiComponent2anti[X_Association, {i_, j_}] := Which[
 		0
 ];
 
-GetFlatMetric[bundle_] := If[
+GetFlatMetric[bundle_] := Which[
     KeyExistsQ[bundle, "eta"],
-    	bundle["eta"],
-    		DiagonalMatrix[bundle["signature"]]
+        bundle["eta"],
+
+    KeyExistsQ[bundle, "signature"],
+        DiagonalMatrix[bundle["signature"]],
+
+    True,
+        DiagonalMatrix[
+            Join[{-1}, ConstantArray[1, Length[bundle["basis"]] - 1]]
+        ]
 ];
 
 Clear[PaiComputeSpinConnection];
