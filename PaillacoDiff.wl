@@ -1878,9 +1878,9 @@ PaiComputeRicciScalarFlat[frameBundle_, simp_:PaiSimplify] := Module[
 Clear[TensorSignIndices, TensorSignDerivatives, TensorSignRank,
     TensorSignDerivativeOrder, TensorSignAllIndices];
 
-TensorSignIndices[sign_] := Characters[sign[[2]]];
+TensorSignIndices[sign_] := sign[[2]];
 
-TensorSignDerivatives[sign_] := Characters[sign[[3]]];
+TensorSignDerivatives[sign_] := sign[[3]];
 
 TensorSignRank[sign_] := Length[TensorSignIndices[sign]];
 
@@ -1891,7 +1891,7 @@ TensorSignAllIndices[sign_] := Join[TensorSignDerivatives[sign],
 
 TensorSignHead[sign_] := sign[[1]];
 
-MakeTensorSign[head_, indices_, derivatives_] := {head, StringJoin[indices], StringJoin[derivatives]};
+MakeTensorSign[head_, indices_, derivatives_] := {head, indices, derivatives};
 
 Clear[InitComputedTensors];
 
@@ -1919,12 +1919,12 @@ InitComputedTensors[bundle_] := Module[
 
     AssociateTo[$ComputedTensors,
         id -> <|
-        MakeTensorSign["R", {"d", "d"}, {}] -> Rdd,
-        MakeTensorSign["R", {"d", "d", "d", "d"}, {}] -> Rdddd,
+        MakeTensorSign["R", {"dn", "dn"}, {}] -> Rdd,
+        MakeTensorSign["R", {"dn", "dn", "dn", "dn"}, {}] -> Rdddd,
         MakeTensorSign["Ricciscalar", {}, {}] -> RicciScalar,
-        MakeTensorSign["Chris", {"U","d","d"}, {}] -> Chris,
-        MakeTensorSign["g", {"d", "d"}, {}] -> gdd,
-        MakeTensorSign["g", {"U", "U"}, {}] -> gUU
+        MakeTensorSign["Chris", {"up","dn","dn"}, {}] -> Chris,
+        MakeTensorSign["g", {"dn", "dn"}, {}] -> gdd,
+        MakeTensorSign["g", {"up", "up"}, {}] -> gUU
 		|>
 	];
 
@@ -1946,8 +1946,8 @@ ClearAll[ParseIndex, TensorIndices];
 ParseIndex[s_String] :=
     If[
         StringStartsQ[s, "^"],
-        {StringDrop[s, 1], "U"},
-        {s, "d"}
+        {StringDrop[s, 1], "up"},
+        {s, "dn"}
     ];
 
 TensorIndices[tensor_String] := Module[
@@ -1973,18 +1973,16 @@ TensorIndices[tensor_String] := Module[
 ClearAll[IndexStructure, ReadTensorSignature];
 
 IndexStructure[s_String] :=
-    StringJoin[
-        Map[
-            If[StringStartsQ[#, "^"], "U", "d"] &,
-            StringSplit[StringTrim[s]]
-        ]
+    Map[
+        If[StringStartsQ[#, "^"], "up", "dn"] &,
+        StringSplit[StringTrim[s]]
     ];
 
 ReadTensorSignature[tensor_String] := Module[
     {head, inside, posCD, tensorPart, derivativePart},
 
     If[Not[StringContainsQ[tensor, "{"]],
-        Return[{StringTrim[tensor], "", ""}]
+        Return[{StringTrim[tensor], {}, {}}]
     ];
 
     head = StringTrim[First[StringSplit[tensor, "{"]]];
@@ -2001,7 +1999,8 @@ ReadTensorSignature[tensor_String] := Module[
     ];
 
     MakeTensorSign[head,
-    IndexStructure[tensorPart], StringReverse[IndexStructure[StringReplace[derivativePart, ";" -> " "]]]
+    IndexStructure[tensorPart],
+    Reverse[IndexStructure[StringReplace[derivativePart, ";" -> " "]]]
     ]
 ];
 
@@ -2084,8 +2083,8 @@ AdjustIndicesPositions[best_, tensorSign_, bundle_]:=Module[{bestSign, bestInd, 
         {bestInd, targetInd}
     ];
 
-    raisePos = Flatten[Position[changes, {"d", "U"}]];
-    lowerPos = Flatten[Position[changes, {"U", "d"}]];
+    raisePos = Flatten[Position[changes, {"dn", "up"}]];
+    lowerPos = Flatten[Position[changes, {"up", "dn"}]];
 	sparse = First[Values[best]];
 
     Print["** Computing ", TensorSignToString[tensorSign]];
@@ -2125,23 +2124,25 @@ FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[
     KeyTake[closests, {bestSign}]
 ];
 
+
+
 Clear[ComputeCovDTensor];
 ComputeCovDTensor[best_, bundle_] := Module[
-	{bestSign, bestSparse, bestInd, sparseCD, newSign},
+	{bestSign, bestSparse, bestIndCD, sparseCD, newSign},
 
     bestSign = Keys[best][[1]];
     bestSparse = Values[best][[1]];
-    bestInd = StringJoin[TensorSignAllIndices[bestSign]];
+    bestIndCD = StringJoin[TensorSignAllIndices[bestSign] /. {"up"->"U", "dn"-> "d"}];
 
     newSign = MakeTensorSign[
         TensorSignHead[bestSign],
         TensorSignIndices[bestSign],
-        Prepend[TensorSignDerivatives[bestSign], "d"]
+        Prepend[TensorSignDerivatives[bestSign], "dn"]
     ];
 
 	Print["** Computing ", TensorSignToString[bestSign]];
 
-	sparseCD = PaiCovD[bundle, bestSparse, bestInd];
+	sparseCD = PaiCovD[bundle, bestSparse, bestIndCD];
 	
 	StoreComputedTensor[bundle, newSign, sparseCD]
 ];
@@ -2712,15 +2713,13 @@ Clear[TensorSignToString];
 TensorSignToString[{head_, indices_, derivatives_}] := Module[
     {ind, der},
 
-    If[indices==="" && derivatives==="",
+    If[indices==={} && derivatives==={},
         Return[head]
     ];
 
-    ind = Characters[indices] /. {"U" -> "up", "d" -> "dn"};
+    der = Reverse[derivatives] /. {"up" -> "Dup", "dn" -> "Ddn"};
 
-    der = Characters[StringReverse[derivatives]] /. {"U" -> "Dup", "d" -> "Ddn"};
-
-    head <> "(" <> StringRiffle[Join[der, ind], ","] <> ")"
+    head <> "(" <> StringRiffle[Join[der, indices], ","] <> ")"
 ];
 
 
@@ -2748,7 +2747,7 @@ TensorStringToSign[spec_String] := Module[
     ];
 
 
-    {head, StringJoin[indices /. {"up" -> "U", "dn" -> "d"}], ""}
+    {head, indices, {}}
 ];
 
 End[]
