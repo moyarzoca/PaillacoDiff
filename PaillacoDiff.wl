@@ -567,8 +567,8 @@ FormSquare[X_] /; !AssociationQ[X] := Module[{},
 ];
 
 
-Clear[FormSquaredd];
-FormSquaredd[0,__]:=0
+Clear[FormSquareddCore];
+FormSquareddCore[0,__]:=0
 
 FormSquareddCore[Xform_, gUU_, simp_:PaiSimplify, basis_] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
@@ -612,6 +612,7 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 ];
 
+Clear[FormSquaredd];
 SetAttributes[FormSquaredd, HoldFirst];
 
 FormSquaredd[bundle_][X_] /; AssociationQ[bundle] := Module[{},
@@ -896,71 +897,6 @@ inP[x_.*e[a_],y_.*e[b_]] := x*y*KroneckerDelta[a,b];
 inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]] := x*y*(KroneckerDelta[j,k]*Wedge[p]-Wedge[e[k],inP[e[j],Wedge[p]]])
 Contractione[X_, DimIn_:Dim] := Table[inP[e[a1111],X],{a1111,DimIn}];
 
-ClearAll[SetVielbein];
-SetVielbein[eIN_,flatmetric_,simp_:PaiSimplify] := Module[{},
-	ClearAll[\[Eta]dd,\[Eta]UU,eTodx,dxToe,eBasis,gdd,gUU,eamuUd,eamudU];
-	\[Eta]dd=flatmetric;
-	\[Eta]UU=Inverse[\[Eta]dd];
-	eTodx=Table[e[iiinx]->eIN[[iiinx]],{iiinx,Dim}];
-	dxToe=Solve[Table[eIN[[iiinx]]==e[iiinx],{iiinx,Dim}],Table[d[coord[[jjinx]]],{jjinx,Dim}]]//Last;
-	eBasis=Array[e,{Dim}];
-	Do[d[eBasis[[iiinx]]]=simp[(d[eIN]/.dxToe)][[iiinx]],{iiinx,Dim}];
-	eamuUd=Map[FormsToMatrix[#, 1, coord]&, eIN];
-	eamudU=Transpose[Inverse[eamuUd]];
-	Clear[gdd,gUU];
-	gdd=simp[Table[Sum[eamuUd[[a,\[Mu]1]]\[Eta]dd[[a,b]]eamuUd[[b,\[Mu]2]],{a,Dim},{b,Dim}],{\[Mu]1,Dim},{\[Mu]2,Dim}]];
-	gUU=simp[Table[Sum[eamudU[[a,\[Mu]1]]\[Eta]UU[[a,b]]eamudU[[b,\[Mu]2]],{a,Dim},{b,Dim}],{\[Mu]1,Dim},{\[Mu]2,Dim}]];
-	
-	(*-End code-Next only print what is what.*)
-	
-	Print[
-	Style["The following global variables were defined:\n",Purple],Style["eTodx",Bold],
-	"  Rule to chage basis from ",PrintIndex["e",{"a"}]," to ",PrintIndex["dx",{"\[Mu]"}],"\n",
-	Style["dxToe",Bold],"  Rule to chage basis from ",PrintIndex["dx",{"\[Mu]"}]," to ",PrintIndex["e",{"a"}],"\n",
-	Style["eamuUd",Bold],"  Vielbein matrix ",PrintIndex["e",{"a",-"\[Mu]"}],"\n",
-	Style["eamudU",Bold],"  Inverse vielbein matrix ",PrintIndex["e",{-"a","\[Mu]"}]," s.t. ",
-	PrintIndex["e",{"a",-"\[Mu]"}],PrintIndex["e",{-"a","\[Nu]"}]," = ",PrintIndex["\[Delta]",{"\[Nu]",-"\[Mu]"}]," and ",
-	PrintIndex["e",{"a",-"\[Mu]"}],PrintIndex["e",{-"b","\[Mu]"}]," = ",PrintIndex["\[Delta]",{"a",-"b"}]
-	,"\n",Style["\[Eta]dd",Bold],"  Flat metric ",PrintIndex["\[Eta]",{-"a",-"b"}],"\n",
-	Style["\[Eta]UU",Bold],"  Inverse flat metric ",PrintIndex["\[Eta]",{"a","b"}]
-	,"\n",Style["gdd",Bold],"  ",PrintIndex["g",{-"\[Mu]",-"\[Nu]"}]," = ",PrintIndex["\[Eta]",{-"a",-"b"}],
-	PrintIndex["e",{"a",-"\[Mu]"}],PrintIndex["e",{"b",-"\[Nu]"}],"\n",Style["gUU",Bold],"  ",PrintIndex["g",{"\[Mu]","\[Nu]"}]," = ",
-	PrintIndex["\[Eta]",{"a","b"}],PrintIndex["e",{-"a","\[Mu]"}],PrintIndex["e",{-"b","\[Nu]"}]
-	]
-];
-
-ComputeSpinConnection[eIN_,flatmetric_,simp_:PaiSimplify]:=
-Module[{secondterm\[Omega],GUdd},
-	SetVielbein[eIN,flatmetric];
-	If[
-	Dimensions[gdd]!={Dim,Dim},
-		Return[Print[Style["Metric ",Red,14],Style["gdd ",Bold,Red,14],Style["not defined\n",Red,14]," The program requieres a global variabled ",
-		Style["gdd ",Bold],"being an square array filled by the component of the metric tensor ",PrintIndex["g",{-"\[Mu]",-"\[Nu]"}]]];
-	];
-	ComputeChrisUdd[simp];
-	ClearAll[\[Omega]Ud];ClearAll[\[Omega]dd];
-	secondterm\[Omega] = Activate@TensorContract[Inactive[TensorProduct][d[eamuUd],eamudU],{{2,4}}]/.dxToe;
-	GUdd = Activate@TensorContract[Inactive[TensorProduct][ChrisUdd,eamuUd,eamudU,eamudU],{{1,5},{2,7},{3,9}}];
-	\[Omega]Ud = Activate@TensorContract[Inactive[TensorProduct][GUdd,eBasis],{{2,4}}]-secondterm\[Omega];
-	\[Omega]dd = Activate@TensorContract[Inactive[TensorProduct][\[Eta]dd,\[Omega]Ud],{{2,3}}];
-	Print[
-		Style["\[Omega]Ud",Bold],"  Spin connection 1-form ",PrintIndex["\[Omega]",{"a",-"b"}]," = ",PrintIndex["\[Omega]",{-"c","a",-"b"}],PrintIndex["e",{"c"}],"\n",
-		Style["\[Omega]dd",Bold],"  ",PrintIndex["\[Omega]",{-"a",-"b"}]," = ",PrintIndex["\[Eta]",{-"a",-"c"}],PrintIndex["\[Omega]",{"c",-"b"}]
-	];
-];
-(*====== Build Print definition of the objects ======*)
-
-PrintIndex[g_,index_]:=Module[{auxobject},
-auxobject=g;
-Do[If[Head[index[[II]]]===Times,auxobject=Subscript[auxobject,(-1)*index[[II]]],auxobject=Superscript[auxobject,index[[II]]]],{II,Length@index}];
-Return[auxobject]
-]
-
-PrintIndices[g_,listdnup_,index_]:=Module[{auxobject},
-auxobject=g;
-Do[If[listdnup[[II]]===dn,auxobject=Subscript[auxobject,index[[II]]],auxobject=Superscript[auxobject,index[[II]]]],{II,Length@index}];
-Return[auxobject]
-]
 	
 (*==========================================================================================================================================*)
 
