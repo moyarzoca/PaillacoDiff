@@ -19,8 +19,8 @@ FormSquare::usage = "FormSquare[bundle][X] / FormSquare[X] computes F_{mu1...mup
 FormSquaredd::usage = "FormSquaredd[bundle][X] / FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
 Hstar::usage = "Hstar[bundle][X] / Hstar[X] computes the Hodge dual of form X."
 Contraction::usage = "Contraction[bundle][X] / Contraction[X] computes the contraction operation of X in the basis d[coord] for metric vielbein and bundle[\"basis\"] for vielbein mode."
-FormToSparse::usage = "FormToSparse[X] converts a form to a SparseArray."
-FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dense matrix. deg is an Integer and the degree of the form, and coord are the coordinates."
+FormToSparse::usage = "FormToSparse[X, deg, coord] converts a form to a SparseArray."
+FormToMatrix::usage = "FormToMatrix[X, deg, coord] converts a form X to a dense matrix. deg is an Integer and the degree of the form, and coord are the coordinates."
 
 ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
 DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
@@ -56,7 +56,8 @@ previously defined with PaiDef.
 The string \"indices\" specifies the requested index positions using
 'dn' for lower indices and 'up' for upper indices. For example,
             PaiCompute[bundle][\"H(dn,dn)\"]"
-
+PaiComputeComponents::usage =
+"PaiComputeComponents[bundle][\"T(indices)\"] computes a tensor if necessary and returns its components.";
 
 (* ---------- Public globals ---------- *)
 
@@ -704,7 +705,7 @@ NotAssociationQ[x_] := !AssociationQ[x];
 
 
 Clear[FormToSparse];
-Clear[FormsToMatrix];
+Clear[FormToMatrix];
 FormToSparse[X_, formdegIN_:"deg", coordIN_:"Global"] :=
 Module[{coordint, Dimint, formdegint},
 	coordint = ResolveGlobal[coordIN, coord];
@@ -720,7 +721,7 @@ Module[{coordint, Dimint, formdegint},
 	Return[SparseFromDNA[DNAofForm[X, d[coordint]], Dimint,formdegint]];
 ];
 
-FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"Global"] := Normal[FormToSparse[X, formdegIN, coordIN]];
+FormToMatrix[X_, formdegIN_:"deg", coordIN_:"Global"] := Normal[FormToSparse[X, formdegIN, coordIN]];
 
 (* ====== Riemann geometry ====== *)
 
@@ -1982,7 +1983,7 @@ ReadTensorSignature[tensor_String] := Module[
     {head, inside, posCD, tensorPart, derivativePart},
 
     If[Not[StringContainsQ[tensor, "{"]],
-        Return[{StringTrim[tensor], {}, {}}]
+        Return[MakeTensorSign[StringTrim[tensor], {}, {}]]
     ];
 
     head = StringTrim[First[StringSplit[tensor, "{"]]];
@@ -2043,7 +2044,7 @@ PaiDef[bundle_][tensor_String, tensorArray_] := Module[
 
     InitComputedTensors[bundle];
 
-    tensorSign = ReadTensorSignature[tensor];
+    tensorSign = TensorStringToSign[tensor];
 
     Dim = Length[bundle["coord"]];
     rank = TensorSignRank[tensorSign] + TensorSignDerivativeOrder[tensorSign];
@@ -2259,6 +2260,19 @@ PaiCompute[spec_] /; StringQ[spec] := Module[
     {},
 	InitGlobalBundle[];
     PaiCompute[globalBundle][spec];
+];
+
+Clear[PaiComputeComponents];
+SetAttributes[PaiComputeComponents, HoldFirst];
+
+PaiComputeComponents[bundle_][spec_String] := Module[{},
+    PaiCompute[bundle][spec];
+    PaiComponents[bundle][spec]
+];
+
+PaiComputeComponents[spec_String] := Module[{},
+    PaiCompute[spec];
+    PaiComponents[spec]
 ];
 
 SetAttributes[PaiComponents, HoldFirst];
@@ -2733,7 +2747,7 @@ TensorStringToSign[spec_String] := Module[
 
     If[
         StringFreeQ[str, {"(", ")"}],
-        Return[{str, "", ""}]
+        Return[MakeTensorSign[str, {}, {}]]
     ];
 
     head = StringTrim[First[StringSplit[str, "("]]];
