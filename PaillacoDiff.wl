@@ -1605,29 +1605,102 @@ ConstructContraction[vielbeinBundle_] := Module[
 	Return[Function[{X}, Contraction[X]]]
 	];
 
+Clear[ValidateVielbeinBundle];
+
+SetAttributes[ValidateVielbeinBundle, HoldFirst];
+
+ValidateVielbeinBundle[bundle_] := Module[
+    {coord, basis, eU, allowedDiffs, diffs, invalid, lambda, scaled, eMatrix},
+
+    If[
+        !And[
+            KeyExistsQ[bundle, "coord"],
+            KeyExistsQ[bundle, "basis"],
+            KeyExistsQ[bundle, "eU"]
+        ],
+        Print[
+            "[ Aborting ] Vielbein bundle requires keys ",
+            "\"coord\", \"basis\" and \"eU\""
+        ];
+        Abort[]
+    ];
+
+    coord = bundle["coord"];
+    basis = bundle["basis"];
+    eU = bundle["eU"];
+
+    If[Length[eU] =!= Length[coord] || Length[basis] =!= Length[coord],
+        Print[
+            "[ Aborting ] Vielbein dimension mismatch",
+            "\nLength[coord]: ", Length[coord],
+            "\nLength[basis]: ", Length[basis],
+            "\nLength[eU]: ", Length[eU]
+        ];
+        Abort[]
+    ];
+
+    allowedDiffs = d[coord];
+    diffs = DeleteDuplicates[Cases[eU, _d, Infinity]];
+    invalid = Complement[diffs, allowedDiffs];
+
+    If[invalid =!= {},
+        Print[
+            "[ Aborting ] Unexpected coordinate differentials in eU: ",
+            invalid
+        ];
+        Abort[]
+    ];
+
+    scaled = eU /. d[_] :> lambda;
+
+    homogen = !AllTrue[scaled, (Exponent[#, lambda, Min] === 1 && Exponent[#, lambda, Max] === 1)&];
+
+    If[homogen,
+        Print[
+            "[ Aborting ] Each vielbein must be linear in d[coord]"
+        ];
+        Abort[]
+    ];
+
+    True
+];
+
 SetAttributes[InitVielbeinBundle, HoldFirst];
 
-InitVielbeinBundle[vielbeinBundle_, simp_:PaiSimplify] := Module[
+InitVielbeinBundle[bundle_, simp_:PaiSimplify] := Module[
 	{eTodx, dxToe, symbs, eU, contraction, coordbasis, hstar,
 	deU, dictde, FormSquareTools},
-	vielbeinBundle = Association[vielbeinBundle];
-	symbs = vielbeinBundle["basis"];
-	eU = vielbeinBundle["eU"];
-	coordbasis = d[vielbeinBundle["coord"]];
+
+	bundle = Association[bundle];
+
+    ValidateVielbeinBundle[bundle];
+
+	symbs = bundle["basis"];
+	eU = bundle["eU"];
+	coordbasis = d[bundle["coord"]];
 	Do[FormDegree[eIter] = 1, {eIter, symbs}];
+
 	eTodx = Normal[AssociationThread[symbs -> eU]];
-	dxToe = Solve[eU == symbs, coordbasis][[1]];
-	contraction = ConstructContraction[vielbeinBundle];
+
+    dxToe = Quiet[
+        Check[Solve[eU == symbs, coordbasis][[1]],
+            Print["[ Aborting ] Could not construct dxToe"];
+            Abort[]
+        ]
+    ];
+
+	contraction = ConstructContraction[bundle];
+
 
 	deU = d[symbs] /. eTodx /. dxToe;
 	dictde = AssociationThread[d[symbs], deU];
 	Do[d[eIter] = Collect[dictde[d[eIter]], _Wedge, simp],{eIter, symbs}];
-	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}];
-	hstar = BuildHodge[vielbeinBundle, simp];
-	vielbeinBundle["Hstar"] = hstar;
-	FormSquareTools = BuildSquaresTools[vielbeinBundle, simp];
-	vielbeinBundle["FormSquare"] = FormSquareTools["FormSquare"];
-	vielbeinBundle["FormSquaredd"] = FormSquareTools["FormSquaredd"];
+	AssociateTo[bundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}];
+	hstar = BuildHodge[bundle, simp];
+	bundle["Hstar"] = hstar;
+	FormSquareTools = BuildSquaresTools[bundle, simp];
+	bundle["FormSquare"] = FormSquareTools["FormSquare"];
+	bundle["FormSquaredd"] = FormSquareTools["FormSquaredd"];
 
 	];
 
