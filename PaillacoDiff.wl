@@ -17,9 +17,10 @@ DNAofForm::usage = "DNAofForm[X] decomposes form X into {{coeff, indices}, ...}.
 SparseFromDNA::usage = "SparseFromDNA[DNA, dim, deg] converts DNA to a SparseArray."
 DNAFromSparse::usage = "DNAFromSparse[sparse] converts a SparseArray back to DNA."
 BuildSquaresTools::usage = "BuildSquaresTools[bundle] builds FormSquare/FormSquaredd closures."
-FormSquare::usage = "FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
-FormSquaredd::usage = "FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
-Hstar::usage = "Hstar[X] computes the Hodge dual of form X."
+FormSquare::usage = "FormSquare[bundle][X] / FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
+FormSquaredd::usage = "FormSquaredd[bundle][X] / FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
+Hstar::usage = "Hstar[bundle][X] / Hstar[X] computes the Hodge dual of form X."
+Contraction::usage = "Contraction[bundle][X] / Contraction[X] computes the contraction operation of X in the basis d[coord] for metric vielbein and bundle[\"basis\"] for vielbein mode."
 FormToSparse::usage = "FormToSparse[X] converts a form to a SparseArray."
 FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dense matrix. deg is an Integer and the degree of the form, and coord are the coordinates."
 
@@ -44,9 +45,6 @@ PaiComputeRdddd::usage = "PaiComputeRdddd[bundle] computes the Riemann tensor."
 PaiComputeRdd::usage = "PaiComputeRdd[bundle] computes the Ricci tensor."
 PaiComputeRicciScalar::usage = "PaiComputeRicciScalar[bundle] computes the Ricci scalar."
 PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors and derived geometric structures up to the requested level. PaiComputeBundleTensors[bundle, \"levels\"] returns the available levels for the bundle."
-BuildHodge::usage = "BuildHodge[bundle] builds a Hodge star function for a bundle."
-BuildHodgeMetric::usage = "BuildHodgeMetric[bundle] builds a coordinate-basis Hodge star function."
-BuildHodgeVielbein::usage = "BuildHodgeVielbein[bundle] builds a vielbein-basis Hodge star function."
 PaiComputeSpinConnection::usage = "PaiComputeSpinConnection[bundle] computes spin connection in bundle."
 PaiComputeCurvatureForm::usage = "PaiComputeCurvatureForm[bundle] computes curvature 2-form."
 PaiComputeRddddFlat::usage = "PaiComputeRddddFlat[bundle] computes Riemann in flat (vielbein) basis."
@@ -110,6 +108,8 @@ eBasis::usage = "List of vielbein basis symbols {e[1], ..., e[Dim]}."
 \[Omega]dd::usage = "Spin connection omega_{ab} (both indices down)."
 
 Begin["`Private`"]
+
+globalBundle = <| |>;
 
 ClearAll[GlobalRequired];
 SetAttributes[GlobalRequired, HoldAll];
@@ -445,8 +445,8 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 		gUU = GetTensorArray[bundle, "gUU"];
 		basis = d[bundle["coord"]];
 		Return[
-		   <| "FormSquare" -> Function[{X}, FormSquare[X, gUU, simp,  basis]],
-		      "FormSquaredd" -> Function[{X}, FormSquaredd[X, gUU, simp,  basis]]
+		   <| "FormSquare" -> Function[{X}, FormSquareCore[X, gUU, simp,  basis]],
+		      "FormSquaredd" -> Function[{X}, FormSquareddCore[X, gUU, simp,  basis]]
 		    |>
 		],
 	KeyExistsQ[bundle, "eU"]===True,
@@ -455,8 +455,8 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 		basis = bundle["basis"];
 		dxToe = bundle["dxToe"];
 		Return[
-		    <| "FormSquare" -> Function[{X}, FormSquare[X /. dxToe, etainv, simp,  basis]],
-		    "FormSquaredd" -> Function[{X}, FormSquaredd[X /. dxToe, etainv, simp,  basis]]
+		    <| "FormSquare" -> Function[{X}, FormSquareCore[X /. dxToe, etainv, simp,  basis]],
+		    "FormSquaredd" -> Function[{X}, FormSquareddCore[X /. dxToe, etainv, simp,  basis]]
 		    |>
 		],
 	True,
@@ -466,26 +466,24 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 ];
 
 
+Clear[FormSquareCore];
 Clear[FormSquare];
-FormSquare[Xform_, gUUIN_:"Global", simp_:PaiSimplify, basisIN_:"Global"] :=
+FormSquareCore[Xform_, gUU_, simp_:PaiSimplify, basis_] :=
 Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
-	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
-	FformValues, FtensorValues, basisint,Dim},
-	If[
-	Xform ===0,
-		Return[0]
-	];
+    indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
+    FformValues, FtensorValues,Dim},
 
-	gintUU = SparseArray[ResolveGlobal[gUUIN, gUU]];
-	basisint = ResolveGlobal[basisIN, coord, d];
+    If[Xform ===0, Return[0]];
 
-	deg = FormDegree[Xform];
-	Dim = Length[basisint];
-	FformDNA = simp[DNAofForm[Xform, basisint]];
+    gintUU = SparseArray[gUU];
+
+    deg = FormDegree[Xform];
+    Dim = Length[basis];
+	FformDNA = simp[DNAofForm[Xform, basis]];
 	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 	FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
 	
-	FormComps   = nonzeroComps[FformSparse];
+    FormComps   = nonzeroComps[FformSparse];
 	TensorComps = nonzeroComps[FtensorSparse];
 	InterComps  = Intersection[FormComps , TensorComps];
 	
@@ -498,22 +496,38 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	Return[(FformValues . FtensorValues)*(deg)!]
 ];
 
+SetAttributes[FormSquare, HoldFirst];
+
+FormSquare[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "FormSquare"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    bundle["FormSquare"][X]
+];
+
+FormSquare[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "FormSquare"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    globalBundle["FormSquare"][X]
+];
+
 
 Clear[FormSquaredd];
 FormSquaredd[0,__]:=0
 
-FormSquaredd[Xform_, gintUUinput_:"Global", simp_:PaiSimplify, basisIN_:"Global"] :=
+FormSquareddCore[Xform_, gUU_, simp_:PaiSimplify, basis_] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
-	basisint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
+	Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
 	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
 	Xdmunu, XdUmunu, FtensorSparse},
 	
-	gintUU = SparseArray[ResolveGlobal[gintUUinput, gUU]];
-	basisint = ResolveGlobal[basisIN, coord, d];
+	gintUU = SparseArray[gUU];
 
-	Dim = Length[basisint];
+	Dim = Length[basis];
 	deg = FormDegree[Xform];
-	FformDNA = simp[DNAofForm[Xform, basisint]];
+	FformDNA = simp[DNAofForm[Xform, basis]];
 	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 	
 	seqgUU = Sequence@@Table[gintUU,{IIinx,deg-1}];
@@ -545,30 +559,44 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 ];
 
+SetAttributes[FormSquaredd, HoldFirst];
 
-Clear[Hstar];
-Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:PaiSimplify] := 
+FormSquaredd[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "FormSquaredd"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    bundle["FormSquaredd"][X]
+];
+
+FormSquaredd[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "FormSquaredd"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    globalBundle["FormSquaredd"][X]
+];
+
+Clear[Hstar, HstarCore];
+HstarCore[Xform_, gintUUIN_, sqrtdetg_, base_, simp_:PaiSimplify] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
-		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint, baseint},
+		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF},
 
 		If[
 		Xform ===0,
 			Return[0]
 		];
 
-		gintUU = SparseArray[ResolveGlobal[gintUUIN, gUU]];
-		sqrtdetgint = ResolveGlobal[sqrtdetgIN, sqrtdetg];
-		baseint = ResolveGlobal[baseIN, coord, d];
+		gintUU = SparseArray[gintUUIN];
 		
-		Dim = Length[baseint];
+		Dim = Length[base];
 		deg = FormDegree[Xform];
 		
 		If[
 			deg===0,
-				Return[Xform*sqrtdetgint Wedge@@(baseint)]
+				Return[Xform*sqrtdetg Wedge@@(base)]
 		];
 		
-		FformDNA = simp[DNAofForm[Xform, baseint]];
+		FformDNA = simp[DNAofForm[Xform, base]];
 		FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 		FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
 		
@@ -582,16 +610,56 @@ Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:
 			Module[{complement, toepsilon},
 				complement = Complement[Range[Dim],formcomp];
 				toepsilon = Flatten[{formcomp,complement}];
-				<|"eps"->toepsilon, "basis" -> Map[baseint[[#]]&, complement]|>
+				<|"eps"->toepsilon, "basis" -> Map[base[[#]]&, complement]|>
 			];
 		
 		starF = 
-			sqrtdetgint*Sum[
+			sqrtdetg*Sum[
 				FtensorDict[comp]*Signature[compToStar[comp]["eps"]]*Apply[Wedge, compToStar[comp]["basis"]]
 			,
 			{comp, TensorComps}];
 		Return[starF]
-	];
+    ];
+
+SetAttributes[Hstar, HoldFirst];
+
+Hstar[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "Hstar"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    bundle["Hstar"][X]
+];
+
+Hstar[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "Hstar"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    globalBundle["Hstar"][X]
+];
+
+Clear[Contraction];
+
+SetAttributes[Contraction, HoldFirst];
+
+Contraction[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "contraction"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    bundle["contraction"][X]
+];
+
+Contraction[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "contraction"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    globalBundle["contraction"][X]
+];
+
+
+Clear[NotAssociationQ];
+NotAssociationQ[x_] := !AssociationQ[x];
 
 
 
@@ -1203,9 +1271,9 @@ SetAttributes[PaiComputeBundleTensors, HoldFirst];
 
 PaiComputeBundleTensors[bundle_, "levels"] := Which[
     KeyExistsQ[bundle, "ds2"],
-        {"metric", "metricTools", "ChrisUdd", "Rdddd", "Rdd", "RicciScalar"},
+        {"metric", "basicTools", "ChrisUdd", "Rdddd", "Rdd", "RicciScalar"},
     KeyExistsQ[bundle, "eU"],
-        {"basic", "spinConnection", "curvatureForm", "Rdddd", "Rdd", "RicciScalar"}
+        {"basicTools", "spinConnection", "curvatureForm", "Rdddd", "Rdd", "RicciScalar"}
 ];
 
 PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Automatic] := Module[
@@ -1247,7 +1315,7 @@ PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:PaiSimpl
 	Print[AbsoluteTiming[InitVielbeinBundle[bundleIN, simpVielbein];]];
 	bundle=bundleIN;
 
-	If[level === "basic", Return[]];
+	If[level === "basicTools", Return[]];
 
 	Forms = Lookup[bundle,"Forms", <| |>];
 	needSpinConnection   = Not[KeyExistsQ[Forms, "omegadd"]];
@@ -1344,11 +1412,11 @@ PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Mo
 
 	(* --- Metric bundle tools --- *)
 	If[needMetricTools,
-		Print["** Computing metricTools : Hstar, FormSquare, FormSquaredd"];
+		Print["** Computing basicTools : Hstar, FormSquare, FormSquaredd, Contraction"];
 		InitMetricTools[bundle, simpMetric];
 	];
 
-	If[level === "metricTools", 
+	If[level === "basicTools", 
 		bundleIN = bundle;
 		Return[]
 	];
@@ -1449,7 +1517,7 @@ BuildHodgeMetric[bundle_, simp_:PaiSimplify] :=
 					sqrtdetg = Simplify[sqrtdetg]
 		];
 		Return[Function[{X}, 
-			Hstar[X, gUU, sqrtdetg, d[coord], simp]
+			HstarCore[X, gUU, sqrtdetg, d[coord], simp]
 			]];
 	];
 
@@ -1459,7 +1527,7 @@ BuildHodgeVielbein[bundle_, simp_:PaiSimplify] := Module[{basis, eta, etainv, sq
 	etainv = Inverse[eta];
 	sqrtdeteta = Sqrt[-Det[eta]];
 	Return[Function[{X}, 
-			Hstar[X /. bundle["dxToe"], etainv, sqrtdeteta, basis, simp]
+			HstarCore[X /. bundle["dxToe"], etainv, sqrtdeteta, basis, simp]
 			]];
 
 
@@ -1512,6 +1580,8 @@ InitMetricTools[bundle_, simp_:PaiSimplify] := Module[{ToClear, FormSquareTools}
 	If[KeyExistsQ[bundle, "constants"],
     	Do[d[cIter]=0, {cIter, bundle["constants"]}];
 	];
+    bundle["basis"] = d[bundle["coord"]];
+    bundle["contraction"] = ConstructContraction[bundle];
     bundle["Hstar"] = BuildHodge[bundle, simp];
     FormSquareTools = BuildSquaresTools[bundle, simp];
     bundle["FormSquare"] = FormSquareTools["FormSquare"];
