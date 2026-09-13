@@ -26,8 +26,6 @@ FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dens
 
 ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
 DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
-SetVielbein::usage = "SetVielbein[eIN, eta] sets up the vielbein basis and defines global variables."
-ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spin connection 1-form."
 
 InitMetricTools::usage = "InitMetricTools[bundle] constructs Hstar, FormSquare, and FormSquaredd associated with the bundle.";
 TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
@@ -292,7 +290,7 @@ MetricQuadraticInDiffQ[ds2_] := Module[
 Clear[ValidateMetricBundle];
 
 ValidateMetricBundle[bundle_] := Module[
-    {coord, metricCoord, inter},
+    {coord, metricCoord},
 
     If[!KeyExistsQ[bundle, "coord"],
         Print["[ Aborting ] Bundle requires key \"coord\""];
@@ -302,7 +300,6 @@ ValidateMetricBundle[bundle_] := Module[
     If[KeyExistsQ[bundle, "ds2"],
         coord = bundle["coord"];
         metricCoord = DeleteDuplicates[Cases[bundle["ds2"], d[x_] :> x, Infinity]];
-        inter = Intersection[coord, metricCoord];
 
         If[Sort[coord] =!= Sort[metricCoord],
             Print[
@@ -1546,7 +1543,7 @@ Clear[ValidateVielbeinBundle];
 SetAttributes[ValidateVielbeinBundle, HoldFirst];
 
 ValidateVielbeinBundle[bundle_] := Module[
-    {coord, basis, eU, allowedDiffs, diffs, invalid, lambda, scaled, eMatrix, homogen},
+    {coord, basis, eU, allowedDiffs, diffs, invalid, lambda, scaled, homogen},
 
     If[
         !And[
@@ -2712,7 +2709,7 @@ TensorSignToString[{head_, indices_, derivatives_}] := Module[
 Clear[ParseComputeSpec];
 
 TensorStringToSign[spec_String] := Module[
-    {head, inside, indices},
+    {head, inside, indices, str},
 
 
     str = StringTrim[spec];
