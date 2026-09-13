@@ -26,10 +26,6 @@ FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dens
 
 ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
 DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
-Computegdd::usage = "Computegdd[bundle] computes gdd and sqrtdetg for a bundle."
-ComputeChrisUdd::usage = "ComputeChrisUdd[] computes Christoffel symbols from global gdd, coord."
-ComputeRdd::usage = "ComputeRdd[] computes the Ricci tensor."
-ComputeRicciScalar::usage = "ComputeRicciScalar[] computes the Ricci scalar."
 SetVielbein::usage = "SetVielbein[eIN, eta] sets up the vielbein basis and defines global variables."
 ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spin connection 1-form."
 
@@ -39,11 +35,6 @@ RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified 
 LowerIndices::usage = "LowerIndices[sparse, bundle, positions] lower specified indices."
 PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
 GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
-PaiComputeMetric::usage = "PaiComputeMetric[bundle] computes metric from bundle's ds2."
-PaiComputeChrisUdd::usage = "PaiComputeChrisUdd[bundle] computes Christoffel symbols from bundle."
-PaiComputeRdddd::usage = "PaiComputeRdddd[bundle] computes the Riemann tensor."
-PaiComputeRdd::usage = "PaiComputeRdd[bundle] computes the Ricci tensor."
-PaiComputeRicciScalar::usage = "PaiComputeRicciScalar[bundle] computes the Ricci scalar."
 PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors and derived geometric structures up to the requested level. PaiComputeBundleTensors[bundle, \"levels\"] returns the available levels for the bundle."
 PaiComputeSpinConnection::usage = "PaiComputeSpinConnection[bundle] computes spin connection in bundle."
 PaiComputeCurvatureForm::usage = "PaiComputeCurvatureForm[bundle] computes curvature 2-form."
@@ -87,6 +78,7 @@ $UsePaiSimplify::usage = "$UsePaiSimplify controls whether PaiSimplify applies a
 
 coord::usage = "List of coordinate variables."
 Dim::usage = "Spacetime dimension."
+ds2::usage = "Metric ds2 expresed in the coordinate basis d[xmu]*d[xnu]"
 gdd::usage = "Metric tensor g_{mu nu}."
 gUU::usage = "Inverse metric g^{mu nu}."
 ChrisUdd::usage = "Christoffel symbols Gamma^mu_{nu rho}."
@@ -114,14 +106,13 @@ globalBundle = <| |>;
 ClearAll[GlobalRequired];
 SetAttributes[GlobalRequired, HoldAll];
 
-GlobalRequired::missing =
-	"Global Mode requires `1` to be defined.";
+GlobalRequired::missing = "Global Mode requires `1` to be defined.";
 
 GlobalRequired[x_Symbol] :=
-	If[
-		!ValueQ[x],
+	If[!ValueQ[x],
 		Message[GlobalRequired::missing, HoldForm[x]];
-		Abort[]
+		Abort[],
+            True
 	];
 
 GlobalRequired[x_Symbol, xs__Symbol] := (
@@ -326,8 +317,7 @@ coeffBaseElement[pform_, base_]:=
 	Return[{sign*coeff, baseNumb}];
 	];
 
-DNAofForm::noBaseFound = 
-	"No base element found";
+DNAofForm::noBaseFound = "No base element found";
 Clear[DNAofForm];
 
 DNAofForm[FormIn_, base_:"Global"] := Module[
@@ -728,9 +718,6 @@ PaiSimplify[expr_] := If[
 			expr
     ];
 
-Clear[GlobalGeometryID];
-
-GlobalGeometryID[gdd_, coord_] := Hash[HoldComplete[{gdd, coord}]];
 
 Clear[BuildGlobalBundle];
 
@@ -753,7 +740,7 @@ BuildGlobalBundle[gdd_, coord_, id_] := Module[
     AgUU = KeySelect[AgUU, AgUU[#] =!= 0 &];
 
     globalBundle = <|
-    	"GeometryID" -> id,
+    	"GlobalID" -> id,
         "coord" -> coord,
         "ds2" -> ds2,
 	"GlobalSync"-> {},
@@ -764,23 +751,50 @@ BuildGlobalBundle[gdd_, coord_, id_] := Module[
     |>;
 ];
 
+Clear[globalHash];
+globalHash[a_, b_] := Hash[HoldComplete[{a, b}]];
 
 Clear[InitGlobalBundle];
 
-InitGlobalBundle[gddIN_:"Global", coordIN_:"Global"] := Module[
-    {gddint, coordint, id},
+InitGlobalBundle[] := Module[
+    {gddint, coordint, id, initFrom},
 
-    coordint = ResolveGlobal[coordIN, coord];
-    gddint   = ResolveGlobal[gddIN, gdd];
+    GlobalRequired[coord];
+    coordint = coord;
 
-    id = GlobalGeometryID[gddint, coordint];
+    Which[
+    GlobalRequired[ds2],
+        initFrom = "ds2";
+        gddint = DiffToMatrix[ds2, coordint],
+    GlobalRequired[gdd],
+        initFrom = "gdd";
+        gddint = ResolveGlobal[gddIN, gdd];
+        Print["** Initializing Global bundle from gdd"],
+    True,
+        Print["[ Aborting ] neither ds2 or gdd provided as global variables"]
+    ];
 
-    If[(!AssociationQ[globalBundle]) || (Lookup[globalBundle, "GeometryID", None] =!= id),
-    	Print["Initialize New Global Bundle"];
-    	BuildGlobalBundle[gddint, coordint, id]
+    id = globalHash[gddint, coordint];
+
+    If[(!AssociationQ[globalBundle]) || (Lookup[globalBundle, "GlobalID", None] =!= id),
+        Print["** Initializing  new global bundle from "<>initFrom];
+    	BuildGlobalBundle[gddint, coordint, id];
+        CleanComputedTensors[globalBundle];
     ];
 
     globalBundle
+];
+
+Clear[CleanComputedTensors];
+
+CleanComputedTensors[bundle_] := Module[
+    {id},
+
+    If[!KeyExistsQ[bundle, "id"],
+        Return[]
+    ];
+    id = bundle["id"];
+    $ComputedTensors[id] = <||>;
 ];
 
 Clear[SetGlobalTensor];
@@ -801,31 +815,6 @@ SyncGlobalTensors[] := Module[{},
     SetGlobalTensor[Rdd, "Rdd"];
     SetGlobalTensor[RicciScalar, "RicciScalar"];
 ];
-
-Clear[ComputeChrisUdd];
-
-ComputeChrisUdd[simp_:Automatic, gddcoord_:{"Global", "Global"}] := Module[
-    {},
-    InitGlobalBundle[First[gddcoord], Last[gddcoord]];
-    PaiComputeBundleTensors[globalBundle, "ChrisUdd", simp];
-    SyncGlobalTensors[];
-];
-
-Clear[ComputeRdd];
-
-ComputeRdd[simp_:Automatic, gddcoord_:{"Global", "Global"}] :=Module[
-	{},
-	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
-    	PaiComputeBundleTensors[globalBundle, "Rdd", simp];
-	SyncGlobalTensors[];
-];
-
-ComputeRicciScalar[simp_:Automatic, gddcoord_:{"Global", "Global"}] := Module[
-	{},
-	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
-    	PaiComputeBundleTensors[globalBundle, "RicciScalar", simp];
-	SyncGlobalTensors[];
-	];
 
 "Here we consider the definition of the contraction operator Contracione that take a p-form in the vielbein basis an 
 return a (p-1)-form with a Lorentz index attaced at the beggining."
@@ -1311,7 +1300,7 @@ PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:PaiSimpl
 			simpRicci = simp;
 			simpR     = simp
 	];
-	Print["** Constructing bundle Tools: Hstar, FormSquare, FormSquaredd"];
+	Print["** Constructing bundle Tools: Hstar, FormSquare, FormSquaredd, Contraction"];
 	Print[AbsoluteTiming[InitVielbeinBundle[bundleIN, simpVielbein];]];
 	bundle=bundleIN;
 
@@ -1830,6 +1819,7 @@ InitComputedTensors[bundle_] := Module[
 	];
 	
 	Rdd = GetTensorArray[bundle, "Rdd"];
+	Chris = GetTensorArray[bundle, "ChrisUdd"];
 	gdd = GetTensorArray[bundle, "gdd"];
 	gUU = GetTensorArray[bundle, "gUU"];
 	Rdddd = GetTensorArray[bundle, "Rdddd"];
@@ -1840,6 +1830,7 @@ InitComputedTensors[bundle_] := Module[
 			{"R", "dd", ""} -> Rdd,
 			{"R", "dddd", ""} -> Rdddd,
 			{"Ricciscalar", "", ""} -> RicciScalar,
+			{"Chris", "Udd", ""} -> Chris,
 			{"g", "dd", ""} -> gdd,
 			{"g", "UU", ""} -> gUU
 		|>
@@ -1923,9 +1914,10 @@ ReadTensorSignature[tensor_String] := Module[
 
 Clear[PaiDef, $DefTensors];
 $DefTensors=<||>;
+SetAttributes[PaiDef, HoldFirst];
 
 PaiDef[tensorDef_String] := Module[
-	{splitDef, tensor, def, TensorSign},
+	{splitDef, tensor, def, TensorSign, previous},
 	splitDef = StringSplit[tensorDef, ":="];
 	tensor = StringTrim[splitDef[[1]]];
 	def = StringTrim[splitDef[[2]]];
@@ -1952,8 +1944,7 @@ PaiDef[tensorDef_String] := Module[
     Print["** Definition created ", TensorSignToString[TensorSign]]
 ];
 
-SetAttributes[PaiDef, HoldRest];
-PaiDef[tensor_String, tensorArray_, bundle_] := Module[
+PaiDef[bundle_][tensor_String, tensorArray_] := Module[
     {tensorSign, rank, Dim, expectedDimensions},
 
     InitComputedTensors[bundle];
@@ -1981,7 +1972,9 @@ PaiDef[tensor_String, tensorArray_, bundle_] := Module[
     Print["** Tensor registered ", TensorSignToString[tensorSign]];
 
     tensorArray
-]
+];
+
+PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray];
 
 Clear[AdjustIndicesPositions];
 AdjustIndicesPositions[best_, tensorSign_, bundle_]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, sparse},
@@ -2144,7 +2137,20 @@ PaiCompute[bundle_][spec_String] := Module[
     {tensorSign},
     tensorSign = TensorStringToSign[spec];
     InitComputedTensors[bundle];
+
+    If[
+        KeyExistsQ[$ComputedTensors[bundle["id"]], tensorSign],
+        Print["** Tensor ", spec, " already computed"];
+        Return[]
+    ];
+
     ComputeSingleRequiredTensors[tensorSign, bundle];
+];
+
+PaiCompute[spec_] /; StringQ[spec] := Module[
+    {},
+	InitGlobalBundle[];
+    PaiCompute[globalBundle][spec];
 ];
 
 SetAttributes[PaiComponents, HoldFirst];
@@ -2162,6 +2168,9 @@ PaiComponents[bundle_][spec_String] := Module[
 
     $ComputedTensors[bundle["id"]][tensorSign]
 ];
+
+
+PaiComponents[spec_] /; StringQ[spec] := PaiComponents[globalBundle][spec];
 
 (*
 ====================================================
