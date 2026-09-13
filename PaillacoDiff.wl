@@ -2039,20 +2039,50 @@ PaiDef[tensorDef_String] := Module[
     Print["** Definition created ", TensorSignToString[TensorSign]]
 ];
 
-PaiDef[bundle_][tensor_String, tensorArray_] := Module[
-    {tensorSign, rank, Dim, expectedDimensions},
+PaiObjectToArray[bundle_, tensorSign_, object_] := Module[
+    {rank, indices},
+
+    rank = TensorSignRank[tensorSign];
+    indices = TensorSignIndices[tensorSign];
+
+    Which[
+        ListQ[object] && ArrayDepth[object] === rank,
+            object,
+
+        rank === 0 && Not[ListQ[object]],
+            object,
+
+        rank === 2 && DeleteDuplicates[indices]==={"dn"} && MetricQuadraticInDiffQ[object],
+            Print["** Recognized object as quadratic form"]
+            DiffToMatrix[object, bundle["coord"]],
+
+        FormDegree[object] === rank && DeleteDuplicates[indices]==={"dn"},
+            Print["** Recognized object as ",rank, "-form"];
+            FormToMatrix[object, rank, bundle["coord"]],
+
+        True,
+            Print[
+                "[ Aborting ] Could not interpret object as tensor ",
+                TensorSignToString[tensorSign]
+            ];
+            Abort[]
+    ]
+];
+
+PaiDef[bundle_][tensor_String, object_] := Module[
+    {tensorSign, rank, Dim, expectedDimensions, tensorArray},
 
     InitComputedTensors[bundle];
 
     tensorSign = TensorStringToSign[tensor];
 
     Dim = Length[bundle["coord"]];
-    rank = TensorSignRank[tensorSign] + TensorSignDerivativeOrder[tensorSign];
-
+    rank = TensorSignRank[tensorSign];
     expectedDimensions = ConstantArray[Dim, rank];
 
-    If[
-        Dimensions[tensorArray] =!= expectedDimensions,
+    tensorArray = PaiObjectToArray[bundle, tensorSign, object];
+
+    If[rank>0 && ListQ[tensorArray] && (Dimensions[tensorArray] =!= expectedDimensions),
         Print[
             "[ Aborting ] Tensor ", tensor,
             " has dimensions ", Dimensions[tensorArray],
@@ -2064,8 +2094,6 @@ PaiDef[bundle_][tensor_String, tensorArray_] := Module[
     StoreComputedTensor[bundle, tensorSign, tensorArray];
 
     Print["** Tensor registered ", TensorSignToString[tensorSign]];
-
-    tensorArray
 ];
 
 PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray];
