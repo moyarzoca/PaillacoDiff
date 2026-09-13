@@ -282,6 +282,67 @@ PolyFormQ[expr_] := Module[{terms, degs,exprExpand,degsDiff},
 	];
 ];
 
+Clear[MetricDifferentialDegreeQ];
+
+MetricQuadraticInDiffQ[ds2_] := Module[
+    {lambda, scaled},
+    scaled = Expand[ds2 /. d[_] :> lambda];
+    (Exponent[scaled, lambda, Min] === 2) && (Exponent[scaled, lambda, Max] === 2)
+];
+Clear[ValidateMetricBundle];
+
+ValidateMetricBundle[bundle_] := Module[
+    {coord, metricCoord, inter},
+
+    If[!KeyExistsQ[bundle, "coord"],
+        Print["[ Aborting ] Bundle requires key \"coord\""];
+        Abort[]
+    ];
+
+    If[KeyExistsQ[bundle, "ds2"],
+        coord = bundle["coord"];
+        metricCoord = DeleteDuplicates[Cases[bundle["ds2"], d[x_] :> x, Infinity]];
+        inter = Intersection[coord, metricCoord];
+
+        If[Sort[coord] =!= Sort[metricCoord],
+            Print[
+                "[ Aborting ] Coordinate mismatch",
+                "\nIn coord but not in metric: ", Complement[coord, metricCoord],
+                "\nIn metric but not in coord: ", Complement[metricCoord, coord]
+            ];
+            Abort[]
+        ];
+    ];
+
+    If[Not[MetricQuadraticInDiffQ[bundle["ds2"]]],
+        Print["[ Aborting ] Metric must be quadratic in your coordinates differentials ", d[coord]];
+        Abort[]
+    ];
+
+    True
+];
+
+Clear[ValidateForm];
+
+ValidateForm[bundle_][X_] := Module[
+    {allowedDifferentials, differentialForms, invalid},
+
+    allowedDifferentials = d[bundle["coord"]];
+
+    differentialForms =DeleteDuplicates[Cases[X, d[some_] :> d[some], {0, Infinity}]];
+
+    invalid = Complement[differentialForms, allowedDifferentials];
+
+    If[
+        invalid =!= {},
+        Print["[ Aborting ] Forms outside the bundle basis: ", invalid,
+        "\nDid you forget to declare a constant?"];
+        Abort[]
+    ];
+
+    True
+];
+
 Clear[coeffBaseElement];
 
 coeffBaseElement[pform_, base_]:=
@@ -492,6 +553,7 @@ FormSquare[bundle_][X_] /; AssociationQ[bundle] := Module[{},
     If[!KeyExistsQ[bundle, "FormSquare"],
         PaiComputeBundleTensors[bundle, "basicTools"]
     ];
+    ValidateForm[bundle][X];
     bundle["FormSquare"][X]
 ];
 
@@ -500,6 +562,7 @@ FormSquare[X_] /; !AssociationQ[X] := Module[{},
         InitGlobalBundle[];
         PaiComputeBundleTensors[globalBundle, "basicTools"]
     ];
+    ValidateForm[globalBundle][X];
     globalBundle["FormSquare"][X]
 ];
 
@@ -555,6 +618,7 @@ FormSquaredd[bundle_][X_] /; AssociationQ[bundle] := Module[{},
     If[!KeyExistsQ[bundle, "FormSquaredd"],
         PaiComputeBundleTensors[bundle, "basicTools"]
     ];
+    ValidateForm[bundle][X];
     bundle["FormSquaredd"][X]
 ];
 
@@ -563,6 +627,7 @@ FormSquaredd[X_] /; !AssociationQ[X] := Module[{},
         InitGlobalBundle[];
         PaiComputeBundleTensors[globalBundle, "basicTools"]
     ];
+    ValidateForm[globalBundle][X];
     globalBundle["FormSquaredd"][X]
 ];
 
@@ -617,6 +682,7 @@ Hstar[bundle_][X_] /; AssociationQ[bundle] := Module[{},
     If[!KeyExistsQ[bundle, "Hstar"],
         PaiComputeBundleTensors[bundle, "basicTools"]
     ];
+    ValidateForm[bundle][X];
     bundle["Hstar"][X]
 ];
 
@@ -625,6 +691,7 @@ Hstar[X_] /; !AssociationQ[X] := Module[{},
         InitGlobalBundle[];
         PaiComputeBundleTensors[globalBundle, "basicTools"]
     ];
+    ValidateForm[globalBundle][X];
     globalBundle["Hstar"][X]
 ];
 
@@ -1360,6 +1427,8 @@ PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Mo
 	{Tensors, needMetric, needMetricTools, needChris, needRiemann, AgddgUU, Agdd, AgUU, 
 	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar,
 	simpMetric, simpChris, simpRiem, simpRicci, simpR},
+
+    ValidateMetricBundle[bundleIN];
 
 	If[simp === Automatic,
 		simpMetric = PaiSimplify;
