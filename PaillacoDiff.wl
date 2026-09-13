@@ -1889,6 +1889,10 @@ TensorSignDerivativeOrder[sign_] := Length[TensorSignDerivatives[sign]];
 TensorSignAllIndices[sign_] := Join[TensorSignDerivatives[sign],
     TensorSignIndices[sign]];
 
+TensorSignHead[sign_] := sign[[1]];
+
+MakeTensorSign[head_, indices_, derivatives_] := {head, StringJoin[indices], StringJoin[derivatives]};
+
 Clear[InitComputedTensors];
 
 $ComputedTensors = <||>;
@@ -1913,14 +1917,14 @@ InitComputedTensors[bundle_] := Module[
 	Rdddd = GetTensorArray[bundle, "Rdddd"];
 	RicciScalar = GetTensorArray[bundle, "RicciScalar"];
 
-	AssociateTo[$ComputedTensors,
-		id -> <|
-			{"R", "dd", ""} -> Rdd,
-			{"R", "dddd", ""} -> Rdddd,
-			{"Ricciscalar", "", ""} -> RicciScalar,
-			{"Chris", "Udd", ""} -> Chris,
-			{"g", "dd", ""} -> gdd,
-			{"g", "UU", ""} -> gUU
+    AssociateTo[$ComputedTensors,
+        id -> <|
+        MakeTensorSign["R", {"d", "d"}, {}] -> Rdd,
+        MakeTensorSign["R", {"d", "d", "d", "d"}, {}] -> Rdddd,
+        MakeTensorSign["Ricciscalar", {}, {}] -> RicciScalar,
+        MakeTensorSign["Chris", {"U","d","d"}, {}] -> Chris,
+        MakeTensorSign["g", {"d", "d"}, {}] -> gdd,
+        MakeTensorSign["g", {"U", "U"}, {}] -> gUU
 		|>
 	];
 
@@ -1996,7 +2000,9 @@ ReadTensorSignature[tensor_String] := Module[
             derivativePart = StringDrop[inside, posCD[[1, 1]]]
     ];
 
-    {head, IndexStructure[tensorPart], StringReverse[IndexStructure[StringReplace[derivativePart, ";" -> " "]]]}
+    MakeTensorSign[head,
+    IndexStructure[tensorPart], StringReverse[IndexStructure[StringReplace[derivativePart, ";" -> " "]]]
+    ]
 ];
 
 
@@ -2012,17 +2018,18 @@ PaiDef[tensorDef_String] := Module[
     TensorSign = ReadTensorSignature[tensor];
 
     previous = Select[
-        Keys[$DefTensors], #[[1]] === TensorSign[[1]] &&
-        TensorSignRank[#] === TensorSignRank[TensorSign] &
+        Keys[$DefTensors], 
+            TensorSignHead[#] === TensorSignHead[TensorSign] &&
+            TensorSignRank[#] === TensorSignRank[TensorSign] &
     ];
 
     If[
         previous =!= {},
         Print[
             "[ Aborting ] Tensor < ",
-            TensorSign[[1]],
+            TensorSignHead[TensorSign],
             " > with rank ",
-            StringLength[TensorSign[[2]]],
+            TensorSignRank[TensorSign],
             " is already defined"
         ];
         Abort[]
@@ -2124,13 +2131,13 @@ ComputeCovDTensor[best_, bundle_] := Module[
 
     bestSign = Keys[best][[1]];
     bestSparse = Values[best][[1]];
-    bestInd = StringJoin[bestSign[[3]], bestSign[[2]]];
+    bestInd = StringJoin[TensorSignAllIndices[bestSign]];
 
-    newSign = {
-        bestSign[[1]],
-        bestSign[[2]],
-        StringJoin["d", bestSign[[3]]]
-    };
+    newSign = MakeTensorSign[
+        TensorSignHead[bestSign],
+        TensorSignIndices[bestSign],
+        Prepend[TensorSignDerivatives[bestSign], "d"]
+    ];
 
 	Print["** Computing ", TensorSignToString[bestSign]];
 
@@ -2139,7 +2146,8 @@ ComputeCovDTensor[best_, bundle_] := Module[
 	StoreComputedTensor[bundle, newSign, sparseCD]
 ];
 
-AcceptableSeedTensorQ[tensorSign_] := And[#[[1]]===tensorSign[[1]],
+AcceptableSeedTensorQ[tensorSign_] := And[
+    TensorSignHead[#]===TensorSignHead[tensorSign],
 	TensorSignRank[#]===TensorSignRank[tensorSign],
     TensorSignDerivativeOrder[#]<=TensorSignDerivativeOrder[tensorSign]
 ]&;
@@ -2219,14 +2227,14 @@ FindRequiredScalars[scalars_, bundle_] := Module[
 
     Select[
         scalarSigns,
-        MemberQ[namesInScalars, #[[1]]] &
+        MemberQ[namesInScalars, TensorSignHead[#]] &
     ]
 ];
 
 ScalarTensorQ[sign_] := TensorSignRank[sign] === 0 && TensorSignDerivativeOrder[sign] === 0;
 
 Clear[EvalScalarQuantities];
-EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[#[[1]]]&, KeySelect[ComputedTensors, ScalarTensorQ]]]
+EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[TensorSignHead[#]]&, KeySelect[ComputedTensors, ScalarTensorQ]]]
 
 Clear[PaiCompute];
 
