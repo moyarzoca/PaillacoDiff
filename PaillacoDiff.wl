@@ -1952,7 +1952,8 @@ ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:Identity] := Module[
     StoreComputedTensor[
         bundle,
         nativeSign,
-        GetTensorArray[bundle, tensorName, simp]
+        GetTensorArray[bundle, tensorName, simp],
+        simp
     ];
 
     True
@@ -1960,11 +1961,11 @@ ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:Identity] := Module[
 
 Clear[StoreComputedTensor];
 
-StoreComputedTensor[bundle_, tensorSign_, tensor_] := Module[{id},
+StoreComputedTensor[bundle_, tensorSign_, tensor_, simp_:PaiSimplify] := Module[{id},
 	id = bundle["id"];
 	$ComputedTensors[id] = Append[
 		$ComputedTensors[id],
-		tensorSign -> tensor
+		tensorSign -> simp[tensor]
 	];
 ]
 
@@ -2125,7 +2126,7 @@ PaiDef[bundle_][tensor_String, object_] := Module[
 PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray];
 
 Clear[AdjustIndicesPositions];
-AdjustIndicesPositions[best_, tensorSign_, bundle_]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, sparse},
+AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, sparse},
 	bestSign = First[Keys[best]];
 	bestInd = TensorSignAllIndices[bestSign];
 	targetInd = TensorSignAllIndices[tensorSign];
@@ -2153,7 +2154,7 @@ AdjustIndicesPositions[best_, tensorSign_, bundle_]:=Module[{bestSign, bestInd, 
 	];
 	
 	
-	StoreComputedTensor[bundle, tensorSign, sparse]
+	StoreComputedTensor[bundle, tensorSign, sparse, simp]
 ];
 
 Clear[FindMostSimilarTensor];
@@ -2210,7 +2211,7 @@ AcceptableSeedTensorQ[tensorSign_] := And[
 
 SetAttributes[ComputeSingleRequiredTensors, HoldRest]
 
-ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:Identity] := Module[
+ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
     {usefullComputed, closestDerivatives, best, CompTensors,
     defCandidates, defSign},
 
@@ -2253,7 +2254,7 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:Identity] := Module[
 	
     If[
         TensorSignDerivativeOrder[First[Keys[best]]] === TensorSignDerivativeOrder[tensorSign],
-            AdjustIndicesPositions[best, tensorSign, bundle];
+            AdjustIndicesPositions[best, tensorSign, bundle, simp];
             Return[]
     ];
     ComputeCovDTensor[best, bundle];
@@ -2306,7 +2307,7 @@ Clear[PaiCompute];
 
 SetAttributes[PaiCompute, HoldFirst];
 
-PaiCompute[bundle_][spec_String, simp_:Identity] := Module[
+PaiCompute[bundle_][spec_String, simp_:PaiSimplify] := Module[
     {tensorSign},
     tensorSign = TensorStringToSign[spec];
     InitComputedTensors[bundle];
@@ -2587,26 +2588,26 @@ SetAttributes[EvaluateTensorLeaf, HoldRest];
 
 Clear[EvaluateLeaf];
 
-EvaluateLeaf[leaf_String, bundle_] := If[TensorLeafQ[leaf],
-                                          EvaluateTensorLeaf[leaf, bundle],
-                                              EvaluateScalarLeaf[leaf, bundle]
+EvaluateLeaf[leaf_String, bundle_, simp_:PaiSimplify] := If[TensorLeafQ[leaf],
+                                          EvaluateTensorLeaf[leaf, bundle, simp],
+                                              EvaluateScalarLeaf[leaf, bundle, simp]
    ];
 
 Clear[EvaluateDefinitionTree];
 
-EvaluateDefinitionTree[node_String, bundle_] := EvaluateLeaf[node, bundle];
+EvaluateDefinitionTree[node_String, bundle_, simp_:PaiSimplify] := EvaluateLeaf[node, bundle, simp];
 
-EvaluateDefinitionTree[<|"plus" -> children_|>, bundle_] := EvaluatePlus[
-           Map[EvaluateDefinitionTree[#, bundle] &, children]
+EvaluateDefinitionTree[<|"plus" -> children_|>, bundle_, simp_:PaiSimplify] := EvaluatePlus[
+           Map[EvaluateDefinitionTree[#, bundle, simp] &, children]
        ];
 
-EvaluateDefinitionTree[<|"times" -> children_|>, bundle_] := EvaluateTimes[
-           Map[EvaluateDefinitionTree[#, bundle] &, children]
+EvaluateDefinitionTree[<|"times" -> children_|>, bundle_, simp_:PaiSimplify] := EvaluateTimes[
+           Map[EvaluateDefinitionTree[#, bundle, simp] &, children], simp
        ];
 
 Clear[EvaluateScalarLeaf];
 
-EvaluateScalarLeaf[leaf_String, bundle_, simp_:Identity] := Module[
+EvaluateScalarLeaf[leaf_String, bundle_, simp_:PaiSimplify] := Module[
        {requiredScalars, value},
        requiredScalars = FindRequiredScalars[{leaf}, bundle];
        ComputeRequiredTensors[requiredScalars, bundle, simp];
@@ -2617,7 +2618,7 @@ EvaluateScalarLeaf[leaf_String, bundle_, simp_:Identity] := Module[
 
 Clear[EvaluateTensorLeaf];
 
-EvaluateTensorLeaf[leaf_String, bundle_, simp_:Identity] := Module[
+EvaluateTensorLeaf[leaf_String, bundle_, simp_:PaiSimplify] := Module[
     {tensorSign, value, indices, contractions,
     freePositions},
 
@@ -2673,7 +2674,7 @@ GetContractionsFromIndices[allIndices_List] := Module[
 
 Clear[EvaluateTimes];
 
-EvaluateTimes[children_List] := Module[
+EvaluateTimes[children_List, simp_:PaiSimplify] := Module[
     {scalars, tensors, scalarFactor, tensorValues,
     allIndices, contractions, freePositions, value},
 
@@ -2692,7 +2693,7 @@ EvaluateTimes[children_List] := Module[
         ]
     ];
 
-    tensorValues = Lookup[tensors, "value"];
+    tensorValues = simp[Lookup[tensors, "value"]];
 
     allIndices = Flatten[Lookup[tensors, "indices"], 1];
 
@@ -2763,7 +2764,7 @@ EvaluatePlus[children_List] := Module[
 Clear[ComputeFreshTensor];
 SetAttributes[ComputeFreshTensor, HoldRest];
 
-ComputeFreshTensor[defSign_, bundle_, simp_:Identity] := Module[
+ComputeFreshTensor[defSign_, bundle_, simp_:PaiSimplify] := Module[
     {allDef, tensor, def, tree, result,
     targetIndices, tensorSparse},
 
@@ -2776,7 +2777,8 @@ ComputeFreshTensor[defSign_, bundle_, simp_:Identity] := Module[
 
     result = EvaluateDefinitionTree[
         tree,
-        bundle
+        bundle,
+        simp
     ];
 
     targetIndices = TensorIndices[tensor];
