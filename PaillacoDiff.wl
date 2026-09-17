@@ -895,6 +895,9 @@ TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContrac
 
 TensorProductContract[tensor_, contractIndices_List] := TensorContract[tensor, contractIndices];
 
+SetAttributes[RaiseIndices, HoldRest];
+SetAttributes[LowerIndices, HoldRest];
+
 RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
 	Module[{gUU, RaisePositions, rank, RaiseRelations, metricSequence, TensorUpPermuted, indexPermutation},
 		RaisePositions = Sort[indicesRaisePosition];
@@ -1914,6 +1917,10 @@ InitComputedTensors[bundle_] := Module[
         AssociateTo[$ComputedTensors, id -> <| |>]
     ];
 
+    If[Not[KeyExistsQ[$DefTensors, id]],
+        AssociateTo[$DefTensors, id -> <| |>]
+    ];
+
     id
 ];
 
@@ -1929,7 +1936,7 @@ $NativeTensorSources = <|
 Clear[ComputeNativeTensorSeed];
 SetAttributes[ComputeNativeTensorSeed, HoldRest]
 
-ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:Identity] := Module[
+ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
     {candidates, best, nativeSign, tensorName},
 
     candidates = KeySelect[
@@ -2034,10 +2041,10 @@ ReadTensorSignature[tensor_String] := Module[
 
 
 Clear[PaiDef, $DefTensors];
-$DefTensors=<||>;
+$DefTensors=<| "shared" -> <| |> |>;
 SetAttributes[PaiDef, HoldFirst];
 
-PaiDef[tensorDef_] /; StringQ[tensorDef] := Module[
+DefineStringTensor[storage_, tensorDef_String] := Module[
 	{splitDef, tensor, def, TensorSign, previous},
 	splitDef = StringSplit[tensorDef, ":="];
 	tensor = StringTrim[splitDef[[1]]];
@@ -2045,7 +2052,7 @@ PaiDef[tensorDef_] /; StringQ[tensorDef] := Module[
     TensorSign = ReadTensorSignature[tensor];
 
     previous = Select[
-        Keys[$DefTensors], 
+        Keys[$DefTensors["shared"]], 
             TensorSignHead[#] === TensorSignHead[TensorSign] &&
             TensorSignRank[#] === TensorSignRank[TensorSign] &
     ];
@@ -2062,9 +2069,23 @@ PaiDef[tensorDef_] /; StringQ[tensorDef] := Module[
         Abort[]
     ];
 
-	AssociateTo[$DefTensors, TensorSign -><|tensor->def|>];
-    Print["** Definition created ", TensorSignToString[TensorSign]]
+	AssociateTo[$DefTensors[storage], TensorSign -><|tensor->def|>];
+    Print["** Definition created ", TensorSignToString[TensorSign], " in "<>
+        If[storage === "shared",
+            "shared definitions",
+                "local bundle"
+        ]
+    ];
 ];
+
+PaiDef[tensorDef_String] := DefineStringTensor["shared", tensorDef];
+
+PaiDef[bundle_][tensorDef_String] := Module[
+    {id},
+    id = InitComputedTensors[bundle];
+    DefineStringTensor[id, tensorDef]
+];
+
 
 PaiObjectToArray[bundle_, tensorSign_, object_] := Module[
     {rank, indices},
@@ -2074,12 +2095,14 @@ PaiObjectToArray[bundle_, tensorSign_, object_] := Module[
 
     Which[
         ListQ[object] && ArrayDepth[object] === rank,
+            Print["** Recognized object as Array"];
             object,
 
         rank === 0 && Not[ListQ[object]],
+            Print["** Recognized object as scalar"];
             object,
 
-        rank === 2 && DeleteDuplicates[indices]==={"dn"} && MetricQuadraticInDiffQ[object],
+        rank === 2 && DeleteDuplicates[indices]==={"dn"} && MetricQuadraticInDiffQ[object] && FormDegree[object]===0,
             Print["** Recognized object as quadratic form"];
             DiffToMatrix[object, bundle["coord"]],
 
@@ -2126,6 +2149,7 @@ PaiDef[bundle_][tensor_String, object_] := Module[
 PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray];
 
 Clear[AdjustIndicesPositions];
+SetAttributes[AdjustIndicesPositions, HoldRest];
 AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, sparse},
 	bestSign = First[Keys[best]];
 	bestInd = TensorSignAllIndices[bestSign];
@@ -2183,7 +2207,7 @@ FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[
 
 Clear[ComputeCovDTensor];
 SetAttributes[ComputeCovDTensor, HoldRest];
-ComputeCovDTensor[best_, bundle_] := Module[
+ComputeCovDTensor[best_, bundle_, simp_:PaiSimplify] := Module[
 	{bestSign, bestSparse, bestIndCD, sparseCD, newSign},
 
     bestSign = Keys[best][[1]];
@@ -2200,7 +2224,7 @@ ComputeCovDTensor[best_, bundle_] := Module[
 
 	sparseCD = PaiCovD[bundle, bestSparse, bestIndCD];
 	
-	StoreComputedTensor[bundle, newSign, sparseCD]
+	StoreComputedTensor[bundle, newSign, sparseCD, simp]
 ];
 
 AcceptableSeedTensorQ[tensorSign_] := And[
@@ -2213,7 +2237,7 @@ SetAttributes[ComputeSingleRequiredTensors, HoldRest]
 
 ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
     {usefullComputed, closestDerivatives, best, CompTensors,
-    defCandidates, defSign},
+    defCandidates, defSign, storage},
 
     CompTensors = $ComputedTensors[bundle["id"]];
 	usefullComputed = KeySelect[CompTensors, AcceptableSeedTensorQ[tensorSign]];
@@ -2224,11 +2248,17 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
             Return[ComputeSingleRequiredTensors[tensorSign, bundle, simp]]
         ];
 
-        defCandidates = KeySelect[$DefTensors, AcceptableSeedTensorQ[tensorSign]];
+        defCandidates = KeySelect[$DefTensors[bundle["id"]], AcceptableSeedTensorQ[tensorSign]];
+        storage = bundle["id"];
+
+        If[defCandidates ===<| |>,
+            defCandidates = KeySelect[$DefTensors["shared"], AcceptableSeedTensorQ[tensorSign]];
+            storage = "shared";
+        ];
 
         If[defCandidates === <||>,
             Print[
-                "[ Aborting ] Tensor ", tensorSign, " is neither computed nor defined"
+                "[ Aborting ] Tensor ", TensorSignToString[tensorSign], " is neither computed nor defined"
             ];
             Abort[]
         ];
@@ -2242,7 +2272,7 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
 
 		defSign = First[Keys[defCandidates]];
 
-		ComputeFreshTensor[defSign, bundle, simp];
+		ComputeFreshTensor[defSign, storage, bundle, simp];
 
 		Return[ComputeSingleRequiredTensors[tensorSign, bundle, simp]];
 
@@ -2257,7 +2287,7 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
             AdjustIndicesPositions[best, tensorSign, bundle, simp];
             Return[]
     ];
-    ComputeCovDTensor[best, bundle];
+    ComputeCovDTensor[best, bundle, simp];
     ComputeSingleRequiredTensors[tensorSign, bundle, simp]
 
 
@@ -2266,7 +2296,7 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
 Clear[ComputeRequiredTensors];
 
 SetAttributes[ComputeRequiredTensors, HoldRest];
-ComputeRequiredTensors[requiredTensors_, bundle_, simp_:Identity]:= Module[{},
+ComputeRequiredTensors[requiredTensors_, bundle_, simp_:PaiSimplify]:= Module[{},
 	If[Length[$ComputedTensors[bundle["id"]]] === 0,
 		InitComputedTensors[bundle]];
 	Do[
@@ -2281,7 +2311,8 @@ FindRequiredScalars[scalars_, bundle_] := Module[
 
     scalarSigns = DeleteDuplicates @ Join[
         Keys @ KeySelect[CompTensors, ScalarTensorQ],
-        Keys @ KeySelect[$DefTensors, ScalarTensorQ],
+        Keys @ KeySelect[$DefTensors[bundle["id"]], ScalarTensorQ],
+        Keys @ KeySelect[$DefTensors["shared"], ScalarTensorQ],
         Keys @ KeySelect[$NativeTensorSources, ScalarTensorQ]
     ];
 
@@ -2321,22 +2352,22 @@ PaiCompute[bundle_][spec_String, simp_:PaiSimplify] := Module[
     ComputeSingleRequiredTensors[tensorSign, bundle, simp];
 ];
 
-PaiCompute[spec_] /; StringQ[spec] := Module[
+PaiCompute[spec_, simp_:PaiSimplify] /; StringQ[spec] := Module[
     {},
 	InitGlobalBundle[];
-    PaiCompute[globalBundle][spec];
+    PaiCompute[globalBundle][spec, simp];
 ];
 
 Clear[PaiComputeComponents];
 SetAttributes[PaiComputeComponents, HoldFirst];
 
-PaiComputeComponents[bundle_][spec_String] := Module[{},
-    PaiCompute[bundle][spec];
+PaiComputeComponents[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
+    PaiCompute[bundle][spec, simp];
     PaiComponents[bundle][spec]
 ];
 
 PaiComputeComponents[spec_String] := Module[{},
-    PaiCompute[spec];
+    PaiCompute[spec, simp];
     PaiComponents[spec]
 ];
 
@@ -2764,11 +2795,11 @@ EvaluatePlus[children_List] := Module[
 Clear[ComputeFreshTensor];
 SetAttributes[ComputeFreshTensor, HoldRest];
 
-ComputeFreshTensor[defSign_, bundle_, simp_:PaiSimplify] := Module[
+ComputeFreshTensor[defSign_, storage_, bundle_, simp_:PaiSimplify] := Module[
     {allDef, tensor, def, tree, result,
     targetIndices, tensorSparse},
 
-    allDef = $DefTensors[defSign];
+    allDef = $DefTensors[storage][defSign];
 
     tensor = First[Keys[allDef]];
     def = First[Values[allDef]];
