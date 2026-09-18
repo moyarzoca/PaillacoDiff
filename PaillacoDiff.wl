@@ -49,15 +49,15 @@ PaiDef stores the definition symbolically and does not compute tensor components
 The current implementation supports monomial tensor expressions without
 parenthesized sums.";
 
-PaiComponents::usage = "PaiComponents[bundle][\"T(indices)\"] returns the components of the tensor previously computed."
+PaiGet::usage = "PaiGet[bundle][\"T(indices)\"] returns the components of the tensor previously computed."
 PaiCompute::usage =
 "PaiCompute[bundle][\"T(indices)\"] computes the components of a tensor
 previously defined with PaiDef.
 The string \"indices\" specifies the requested index positions using
 'dn' for lower indices and 'up' for upper indices. For example,
             PaiCompute[bundle][\"H(dn,dn)\"]"
-PaiComputeComponents::usage =
-"PaiComputeComponents[bundle][\"T(indices)\"] computes a tensor if necessary and returns its components.";
+PaiComputeGet::usage =
+"PaiComputeGet[bundle][\"T(indices)\"] computes a tensor if necessary and returns its components.";
 
 (* ---------- Public globals ---------- *)
 
@@ -2052,7 +2052,7 @@ DefineStringTensor[storage_, tensorDef_String] := Module[
     TensorSign = ReadTensorSignature[tensor];
 
     previous = Select[
-        Keys[$DefTensors["shared"]], 
+        Keys[$DefTensors[storage]], 
             TensorSignHead[#] === TensorSignHead[TensorSign] &&
             TensorSignRank[#] === TensorSignRank[TensorSign] &
     ];
@@ -2358,22 +2358,23 @@ PaiCompute[spec_, simp_:PaiSimplify] /; StringQ[spec] := Module[
     PaiCompute[globalBundle][spec, simp];
 ];
 
-Clear[PaiComputeComponents];
-SetAttributes[PaiComputeComponents, HoldFirst];
+Clear[PaiComputeGet];
+SetAttributes[PaiComputeGet, HoldFirst];
 
-PaiComputeComponents[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
+PaiComputeGet[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
     PaiCompute[bundle][spec, simp];
-    PaiComponents[bundle][spec]
+    PaiGet[bundle][spec]
 ];
 
-PaiComputeComponents[spec_String] := Module[{},
+PaiComputeGet[spec_String, simp_:PaiSimplify] := Module[{},
     PaiCompute[spec, simp];
-    PaiComponents[spec]
+    PaiGet[spec]
 ];
 
-SetAttributes[PaiComponents, HoldFirst];
+Clear[PaiGet];
+SetAttributes[PaiGet, HoldFirst];
 
-PaiComponents[bundle_][spec_String] := Module[
+PaiGet[bundle_][spec_String] := Module[
     {tensorSign},
 
     tensorSign = TensorStringToSign[spec];
@@ -2388,7 +2389,7 @@ PaiComponents[bundle_][spec_String] := Module[
 ];
 
 
-PaiComponents[spec_] /; StringQ[spec] := PaiComponents[globalBundle][spec];
+PaiGet[spec_] /; StringQ[spec] := PaiGet[globalBundle][spec];
 
 (*
 ====================================================
@@ -2819,7 +2820,7 @@ ComputeFreshTensor[defSign_, storage_, bundle_, simp_:PaiSimplify] := Module[
         targetIndices
     ]];
 
-    StoreComputedTensor[bundle, defSign, tensorSparse];
+    StoreComputedTensor[bundle, defSign, tensorSparse, simp];
 
     tensorSparse
 ];
