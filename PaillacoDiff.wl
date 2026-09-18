@@ -1930,7 +1930,8 @@ $NativeTensorSources = <|
     MakeTensorSign["Chris", {"up", "dn", "dn"}, {}] -> "ChrisUdd",
     MakeTensorSign["R", {"dn", "dn"}, {}] -> "Rdd",
     MakeTensorSign["R", {"dn", "dn", "dn", "dn"}, {}] -> "Rdddd",
-    MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar"
+    MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar",
+    MakeTensorSign["omega", {"vdn", "vdn"}, {}] -> "omegadd"
 |>;
 
 Clear[ComputeNativeTensorSeed];
@@ -1948,10 +1949,7 @@ ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
         Return[False]
     ];
 
-    best = FindMostSimilarTensor[
-        candidates,
-        tensorSign
-    ];
+    best = FindMostSimilarTensor[candidates, tensorSign];
 
     nativeSign = First[Keys[best]];
     tensorName = First[Values[best]];
@@ -2150,7 +2148,7 @@ PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray]
 
 Clear[AdjustIndicesPositions];
 SetAttributes[AdjustIndicesPositions, HoldRest];
-AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, sparse},
+AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, raisePosV, lowerPosV, sparse},
 	bestSign = First[Keys[best]];
 	bestInd = TensorSignAllIndices[bestSign];
 	targetInd = TensorSignAllIndices[tensorSign];
@@ -2165,6 +2163,9 @@ AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{
 
     raisePos = Flatten[Position[changes, {"dn", "up"}]];
     lowerPos = Flatten[Position[changes, {"up", "dn"}]];
+    raisePosV = Flatten[Position[changes, {"vdn", "vup"}]];
+    lowerPosV = Flatten[Position[changes, {"vup", "vdn"}]];
+
 	sparse = First[Values[best]];
 
     Print["** Computing ", TensorSignToString[tensorSign]];
@@ -2176,29 +2177,66 @@ AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{
 	If[raisePos =!= {},
 		sparse = RaiseIndices[sparse, bundle, raisePos]
 	];
-	
-	
+
+    If[raisePosV =!= {},
+        Abort[];
+        sparse = RaiseIndicesV[sparse, bundle, raisePosV]
+    ];
+
+    If[lowerPosV =!= {},
+        Abort[];
+        sparse = LowerIndicesV[sparse, bundle, lowerPosV]
+    ];
+
 	StoreComputedTensor[bundle, tensorSign, sparse, simp]
+];
+
+$IndexDistanceGraph = Graph[
+    {
+        Property["vdn" -> "vup", EdgeWeight -> 1],
+        Property["vup" -> "vdn", EdgeWeight -> 1],
+
+        Property["dn" -> "up", EdgeWeight -> 2],
+        Property["up" -> "dn", EdgeWeight -> 2],
+
+        Property["dn" -> "vdn", EdgeWeight -> 3],
+        Property["vdn" -> "dn", EdgeWeight -> 3],
+
+        Property["up" -> "vup", EdgeWeight -> 3],
+        Property["vup" -> "up", EdgeWeight -> 3]
+    }
+];
+
+IndexDistance[from_, to_] := GraphDistance[$IndexDistanceGraph, from, to];
+
+TensorSignDistance[candidate_, target_] := Module[
+    {candidateIndices, targetIndices, nDerOrder},
+
+    candidateIndices = Join[
+        TensorSignIndices[candidate],
+        TensorSignDerivatives[candidate]
+    ];
+    
+    nDerOrder = TensorSignDerivativeOrder[candidate];
+    targetIndices = Join[
+        TensorSignIndices[target],
+        Take[TensorSignDerivatives[target], -nDerOrder]
+    ];
+
+    Total[
+        MapThread[
+            IndexDistance,
+            {candidateIndices, targetIndices}
+        ]
+    ]
 ];
 
 Clear[FindMostSimilarTensor];
 FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[
-    {signs, candidateIndices, targetIndices, distance, bestSign},
+    {signs, bestSign},
 
     signs = Keys[closests];
-
-    candidateIndices[sign_] := Join[TensorSignIndices[sign],
-        TensorSignDerivatives[sign]
-    ];
-
-    targetIndices[sign_] := Join[
-        TensorSignIndices[tensorSign],
-        Take[TensorSignDerivatives[tensorSign], -TensorSignDerivativeOrder[sign]]
-    ];
-
-    distance[sign_] := HammingDistance[candidateIndices[sign], targetIndices[sign]];
-
-    bestSign = First[MinimalBy[signs, distance]];
+    bestSign = First[MinimalBy[signs, TensorSignDistance[#, tensorSign]& ]];
 
     KeyTake[closests, {bestSign}]
 ];
@@ -2859,7 +2897,7 @@ TensorStringToSign[spec_String] := Module[
     indices = StringTrim /@ StringSplit[inside, ","];
 
     If[
-        Not[AllTrue[indices, MemberQ[{"up", "dn"}, #] &]],
+        Not[AllTrue[indices, MemberQ[{"up", "dn", "vup", "vdn"}, #] &]],
         Print["[ Aborting ] Invalid tensor indices in ", spec];
         Abort[]
     ];
