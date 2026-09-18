@@ -49,15 +49,15 @@ PaiDef stores the definition symbolically and does not compute tensor components
 The current implementation supports monomial tensor expressions without
 parenthesized sums.";
 
-PaiGet::usage = "PaiGet[bundle][\"T(indices)\"] returns the components of the tensor previously computed."
+PaiComponents::usage = "PaiComponents[bundle][\"T(indices)\"] returns the components of the tensor previously computed."
 PaiCompute::usage =
 "PaiCompute[bundle][\"T(indices)\"] computes the components of a tensor
 previously defined with PaiDef.
 The string \"indices\" specifies the requested index positions using
 'dn' for lower indices and 'up' for upper indices. For example,
             PaiCompute[bundle][\"H(dn,dn)\"]"
-PaiComputeGet::usage =
-"PaiComputeGet[bundle][\"T(indices)\"] computes a tensor if necessary and returns its components.";
+Paillaco::usage =
+"Paillaco[bundle][\"T(indices)\"] computes a tensor if necessary and returns its components.";
 
 (* ---------- Public globals ---------- *)
 
@@ -2358,23 +2358,23 @@ PaiCompute[spec_, simp_:PaiSimplify] /; StringQ[spec] := Module[
     PaiCompute[globalBundle][spec, simp];
 ];
 
-Clear[PaiComputeGet];
-SetAttributes[PaiComputeGet, HoldFirst];
+Clear[Paillaco];
+SetAttributes[Paillaco, HoldFirst];
 
-PaiComputeGet[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
+Paillaco[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
     PaiCompute[bundle][spec, simp];
-    PaiGet[bundle][spec]
+    PaiComponents[bundle][spec]
 ];
 
-PaiComputeGet[spec_String, simp_:PaiSimplify] := Module[{},
+Paillaco[spec_String, simp_:PaiSimplify] := Module[{},
     PaiCompute[spec, simp];
-    PaiGet[spec]
+    PaiComponents[spec]
 ];
 
-Clear[PaiGet];
-SetAttributes[PaiGet, HoldFirst];
+Clear[PaiComponents];
+SetAttributes[PaiComponents, HoldFirst];
 
-PaiGet[bundle_][spec_String] := Module[
+PaiComponents[bundle_][spec_String] := Module[
     {tensorSign},
 
     tensorSign = TensorStringToSign[spec];
@@ -2389,7 +2389,7 @@ PaiGet[bundle_][spec_String] := Module[
 ];
 
 
-PaiGet[spec_] /; StringQ[spec] := PaiGet[globalBundle][spec];
+PaiComponents[spec_] /; StringQ[spec] := PaiComponents[globalBundle][spec];
 
 (*
 ====================================================
