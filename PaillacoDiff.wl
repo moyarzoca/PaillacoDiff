@@ -30,7 +30,6 @@ RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified 
 LowerIndices::usage = "LowerIndices[sparse, bundle, positions] lower specified indices."
 PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
 GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
-PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors and derived geometric structures up to the requested level. PaiComputeBundleTensors[bundle, \"levels\"] returns the available levels for the bundle."
 
 PaiDef::usage = "PaiDef[\"T{indices}:=expression\"] defines a tensor using GRTensor-like notation.
 
@@ -483,7 +482,7 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 		      "FormSquaredd" -> Function[{X}, FormSquareddCore[X, gUU, simp,  basis]]
 		    |>
 		],
-	KeyExistsQ[bundle, "eU"]===True,
+	VielbeinBundleQ[bundle]===True,
 		eta = GetFlatMetric[bundle];
 		etainv = Inverse[eta];
 		basis = bundle["basis"];
@@ -896,9 +895,9 @@ TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContrac
 TensorProductContract[tensor_, contractIndices_List] := TensorContract[tensor, contractIndices];
 
 SetAttributes[ApplyIndexChange, HoldRest];
-SetAttributes[MetricForIndexChange, HoldFirst];
+SetAttributes[MatrixForIndexChange, HoldFirst];
 
-MoveIndicesWithMetric[tensor_, metric_, positions_] := Module[
+MoveIndicesWithMatrix[tensor_, metric_, positions_] := Module[
     {sortedPositions, rank, relations, metricSequence,
      contracted, permutation},
 
@@ -922,12 +921,17 @@ MoveIndicesWithMetric[tensor_, metric_, positions_] := Module[
     Transpose[contracted, permutation]
 ];
 
-MetricForIndexChange[bundle_, {"dn", "up"}] := GetTensorArray[bundle, "gUU"];
-MetricForIndexChange[bundle_, {"up", "dn"}] := GetTensorArray[bundle, "gdd"];
-MetricForIndexChange[bundle_, {"vdn", "vup"}] := Inverse[GetFlatMetric[bundle]];
-MetricForIndexChange[bundle_, {"vup", "vdn"}] := GetFlatMetric[bundle];
+MatrixForIndexChange[bundle_, {"dn", "up"}] := GetTensorArray[bundle, "gUU"];
+MatrixForIndexChange[bundle_, {"up", "dn"}] := GetTensorArray[bundle, "gdd"];
+MatrixForIndexChange[bundle_, {"vdn", "vup"}] := Inverse[GetFlatMetric[bundle]];
+MatrixForIndexChange[bundle_, {"vup", "vdn"}] := GetFlatMetric[bundle];
 
-ApplyIndexChange[tensor_, bundle_, change_, positions_] := MoveIndicesWithMetric[tensor, MetricForIndexChange[bundle, change], positions];
+MatrixForIndexChange[bundle_, {"vdn", "dn"}] := GetTensorArray[bundle, "eamuUd"];
+MatrixForIndexChange[bundle_, {"dn", "vdn"}] := Transpose[GetTensorArray[bundle, "eamudU"]];
+MatrixForIndexChange[bundle_, {"up", "vup"}] := Transpose[GetTensorArray[bundle,"eamuUd"]];
+MatrixForIndexChange[bundle_, {"vup", "up"}] := GetTensorArray[bundle, "eamudU"];
+
+ApplyIndexChange[tensor_, bundle_, change_, positions_] := MoveIndicesWithMatrix[tensor, MatrixForIndexChange[bundle, change], positions];
 
 SetAttributes[RaiseIndices, HoldRest];
 SetAttributes[LowerIndices, HoldRest];
@@ -980,6 +984,13 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 	{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor,
 	sector, name, level},
 
+    If[MemberQ[{"eamuUd", "eamudU"}, tensorName],
+        If[!KeyExistsQ[bundle, tensorName],
+            PaiComputeBundleTensors[bundle, "basicTools", simp]
+        ];
+        Return[bundle[tensorName]]
+    ];
+
 	Dim = Length[bundle["coord"]];
 
 	{sector, name, level} = Switch[tensorName,
@@ -1005,7 +1016,7 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 				{"FlatTensors", "RicciScalar", "RicciScalar"},
 			KeyExistsQ[bundle, "ds2"],
 				{"Tensors", "RicciScalar", "RicciScalar"},
-			KeyExistsQ[bundle, "eU"],
+			VielbeinBundleQ[bundle],
 				{"FlatTensors", "RicciScalar", "RicciScalar"}
 			],
 		_,
@@ -1257,28 +1268,29 @@ PaiComputeRicciScalar[bundle_Association] :=
 			------------------------------------
 *)
 
+SetAttributes[VielbeinBundleQ, HoldFirst];
+
+Clear[VielbeinBundleQ];
+
+VielbeinBundleQ[bundle_] := KeyExistsQ[bundle, "eU"];
+
 Clear[PaiComputeBundleTensors];
 
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
 
-PaiComputeBundleTensors[bundle_, "levels"] := Which[
-    KeyExistsQ[bundle, "ds2"],
-        {"metric", "basicTools", "ChrisUdd", "Rdddd", "Rdd", "RicciScalar"},
-    KeyExistsQ[bundle, "eU"],
-        {"basicTools", "spinConnection", "curvatureForm", "Rdddd", "Rdd", "RicciScalar"}
-];
-
 PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Automatic] := Module[
 	{}, 
-	Which[
-	KeyExistsQ[bundleIN, "ds2"],
-		PaiComputeBundleTensorsMetric[bundleIN, level, simp],
-	KeyExistsQ[bundleIN, "eU"],
-		PaiComputeBundleTensorsVielbein[bundleIN, level, simp],
-	True,
-		Print["[ Aborting ] neither ds2 nor eU was provided"];
-		Abort[];
-	];
+    Which[
+        VielbeinBundleQ[bundleIN],
+            PaiComputeBundleTensorsVielbein[bundleIN, level, simp],
+
+        KeyExistsQ[bundleIN, "ds2"],
+            PaiComputeBundleTensorsMetric[bundleIN, level, simp],
+
+        True,
+            Print["[ Aborting ] neither ds2 nor eU was provided"];
+            Abort[]
+    ]
 ];
 
 ClearAll[PaiComputeBundleTensorsVielbein];
@@ -1612,7 +1624,7 @@ SetAttributes[InitVielbeinBundle, HoldFirst];
 
 InitVielbeinBundle[bundle_, simp_:PaiSimplify] := Module[
 	{eTodx, dxToe, symbs, eU, contraction, coordbasis, hstar,
-	deU, dictde, FormSquareTools},
+	deU, dictde, FormSquareTools, aIter, muIter, eta, etaUU, gdd, gUU, Agdd, AgUU},
 
 	bundle = Association[bundle];
 
@@ -1634,11 +1646,41 @@ InitVielbeinBundle[bundle_, simp_:PaiSimplify] := Module[
 
 	contraction = ConstructContraction[bundle];
 
+    eamuUd = Table[
+        Coefficient[eU[[aIter]], coordbasis[[muIter]]],
+        {aIter, Length[symbs]},
+        {muIter, Length[coordbasis]}
+    ];
+
+    eamudU = Transpose[Inverse[eamuUd]];
+
+    eta = GetFlatMetric[bundle];
+    etaUU = Inverse[eta];
+
+    gdd = Transpose[eamuUd] . eta . eamuUd;
+    gUU = Transpose[eamudU] . etaUU . eamudU;
+
+    buildSymmetric2[X_] := Association[Table[{iIter, jIter} -> X[[iIter, jIter]], {iIter, Length[coordbasis]}, {jIter, iIter, Length[coordbasis]}]];
+
+    Agdd = CleanZeros @ Map[simp, buildSymmetric2[gdd]];
+    AgUU = CleanZeros @ Map[simp, buildSymmetric2[gUU]];
+
+    Tensors = Lookup[bundle, "Tensors", <||>];
+
+    Tensors = Join[Tensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
 
 	deU = d[symbs] /. eTodx /. dxToe;
 	dictde = AssociationThread[d[symbs], deU];
 	Do[d[eIter] = Collect[dictde[d[eIter]], _Wedge, simp],{eIter, symbs}];
-	AssociateTo[bundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}];
+	AssociateTo[bundle, {
+        "eTodx" -> eTodx,
+        "dxToe" -> dxToe,
+        "eamuUd" -> eamuUd,
+        "eamudU" -> eamudU,
+        "contraction"->contraction,
+        "UseVielbein" -> True,
+        "Tensors" -> Tensors
+    }];
 	hstar = BuildHodge[bundle, simp];
 	bundle["Hstar"] = hstar;
 	FormSquareTools = BuildSquaresTools[bundle, simp];
@@ -1938,16 +1980,28 @@ InitComputedTensors[bundle_] := Module[
     id
 ];
 
-$NativeTensorSources = <|
-    MakeTensorSign["g", {"dn", "dn"}, {}] -> "gdd",
-    MakeTensorSign["g", {"up", "up"}, {}] -> "gUU",
-    MakeTensorSign["Chris", {"up", "dn", "dn"}, {}] -> "ChrisUdd",
-    MakeTensorSign["R", {"dn", "dn"}, {}] -> "Rdd",
-    MakeTensorSign["R", {"dn", "dn", "dn", "dn"}, {}] -> "Rdddd",
-    MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar",
-    MakeTensorSign["omega", {"vdn", "vdn"}, {}] -> "omegadd"
-|>;
+NativeTensorSources[bundle_] := If[
+    VielbeinBundleQ[bundle],
 
+    <|
+        MakeTensorSign["g", {"dn", "dn"}, {}] -> "gdd",
+        MakeTensorSign["g", {"up", "up"}, {}] -> "gUU",
+        MakeTensorSign["R", {"vdn", "vdn"}, {}] -> "Rflatdd",
+        MakeTensorSign["R", {"vdn", "vdn", "vdn", "vdn"}, {}] -> "Rflatdddd",
+        MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar",
+        MakeTensorSign["Rform", {"vdn", "vdn"}, {}] -> "Rformdd",
+        MakeTensorSign["omega", {"vdn", "vdn"}, {}] -> "omegadd"
+    |>,
+
+    <|
+        MakeTensorSign["g", {"dn", "dn"}, {}] -> "gdd",
+        MakeTensorSign["g", {"up", "up"}, {}] -> "gUU",
+        MakeTensorSign["Chris", {"up", "dn", "dn"}, {}] -> "ChrisUdd",
+        MakeTensorSign["R", {"dn", "dn"}, {}] -> "Rdd",
+        MakeTensorSign["R", {"dn", "dn", "dn", "dn"}, {}] -> "Rdddd",
+        MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar"
+    |>
+];
 Clear[ComputeNativeTensorSeed];
 SetAttributes[ComputeNativeTensorSeed, HoldRest]
 
@@ -1955,7 +2009,7 @@ ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
     {candidates, best, nativeSign, tensorName},
 
     candidates = KeySelect[
-        $NativeTensorSources,
+        NativeTensorSources[bundle],
         AcceptableSeedTensorQ[tensorSign]
     ];
 
@@ -2234,6 +2288,8 @@ CurrentIndexChangeBatch[paths_] := Module[
 
 NextIndexPaths[paths_] := Map[If[Length[#] > 1, Rest[#], #] &, paths];
 
+SetAttributes[FollowTensorSignPaths, HoldRest];
+
 FollowTensorSignPaths[tensor_, bundle_, paths_] := Module[
     {result, remaining, batch},
 
@@ -2387,7 +2443,7 @@ FindRequiredScalars[scalars_, bundle_] := Module[
         Keys @ KeySelect[CompTensors, ScalarTensorQ],
         Keys @ KeySelect[$DefTensors[bundle["id"]], ScalarTensorQ],
         Keys @ KeySelect[$DefTensors["shared"], ScalarTensorQ],
-        Keys @ KeySelect[$NativeTensorSources, ScalarTensorQ]
+        Keys @ KeySelect[NativeTensorSources[bundle], ScalarTensorQ]
     ];
 
     namesInScalars =
