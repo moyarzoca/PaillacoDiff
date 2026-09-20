@@ -22,8 +22,6 @@ results = report["Results"];
 
 successQ[test_] := test["Outcome"] === "Success";
 
-cleanOutput[expr_] := expr /. HoldForm[x_] :> x;
-
 passed = Select[results, successQ];
 failed = Select[results, Function[test, Not[successQ[test]]]];
 
@@ -40,8 +38,8 @@ Scan[
             Print["[FAIL] ", test["TestID"]];
             Print["       File:     ", FileNameTake[test["TestFileName"]]];
             Print["       Type:     ", test["FailureType"]];
-            Print["       Expected: ", cleanOutput[test["ExpectedOutput"]]];
-            Print["       Actual:   ", cleanOutput[test["ActualOutput"]]];
+            Print["       Expected: ", test["ExpectedOutput"]];
+            Print["       Actual:   ", test["ActualOutput"]];
 
             If[
                 test["ActualMessages"] =!= {},

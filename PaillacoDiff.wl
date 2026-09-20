@@ -1678,8 +1678,8 @@ InitVielbeinBundle[bundle_, simp_:PaiSimplify] := Module[
 
     Tensors = Join[Tensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
 
-	deU = d[symbs] /. eTodx /. dxToe;
-	dictde = AssociationThread[d[symbs], deU];
+	deU = d[eU] /. dxToe;
+    dictde = AssociationThread[d[symbs], deU];
 	Do[d[eIter] = Collect[dictde[d[eIter]], _Wedge, simp],{eIter, symbs}];
 	AssociateTo[bundle, {
         "eTodx" -> eTodx,

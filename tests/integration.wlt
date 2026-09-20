@@ -97,3 +97,13 @@ VerificationTest[
 ];
 
 
+VerificationTest[
+    Module[{bundV2},
+        bundV2 = MakeVielbeinBundleAdS5[];
+        PaiCompute[bundV2]["Rform(vup, vup)"];
+        Simplify[ PaiComponents[bundV2]["Rform(vup,vup)"] + Table[Z[a]\[Wedge]Z[b], {a, 5}, {b, 5}]]
+    ],
+    ConstantArray[0, {5, 5}],
+    TestID -> "Vielbein - curvature 2-form check"
+];
+
