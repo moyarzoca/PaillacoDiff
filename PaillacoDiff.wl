@@ -473,16 +473,8 @@ Clear[BuildSquaresTools];
 SetAttributes[BuildSquaresTools, HoldFirst];
 BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis, dxToe},
 	Which[
-	KeyExistsQ[bundle, "ds2"]===True,
-		PaiComputeBundleTensors[bundle, "metric", simp];
-		gUU = GetTensorArray[bundle, "gUU"];
-		basis = d[bundle["coord"]];
-		Return[
-		   <| "FormSquare" -> Function[{X}, FormSquareCore[X, gUU, simp,  basis]],
-		      "FormSquaredd" -> Function[{X}, FormSquareddCore[X, gUU, simp,  basis]]
-		    |>
-		],
-	VielbeinBundleQ[bundle]===True,
+
+	VielbeinBundleQ[bundle],
 		eta = GetFlatMetric[bundle];
 		etainv = Inverse[eta];
 		basis = bundle["basis"];
@@ -492,6 +484,17 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 		    "FormSquaredd" -> Function[{X}, FormSquareddCore[X /. dxToe, etainv, simp,  basis]]
 		    |>
 		],
+
+	KeyExistsQ[bundle, "ds2"],
+		PaiComputeBundleTensors[bundle, "metric", simp];
+		gUU = GetTensorArray[bundle, "gUU"];
+		basis = d[bundle["coord"]];
+		Return[
+		   <| "FormSquare" -> Function[{X}, FormSquareCore[X, gUU, simp,  basis]],
+		      "FormSquaredd" -> Function[{X}, FormSquareddCore[X, gUU, simp,  basis]]
+		    |>
+		],
+
 	True,
 		Print["[ Aborting ] BuildSquaresTools: ds2 nor eU not given"];
 		Abort[];
@@ -1014,10 +1017,12 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 
 			KeyExistsQ[Lookup[bundle, "FlatTensors", <||>], "RicciScalar"],
 				{"FlatTensors", "RicciScalar", "RicciScalar"},
-			KeyExistsQ[bundle, "ds2"],
-				{"Tensors", "RicciScalar", "RicciScalar"},
+
 			VielbeinBundleQ[bundle],
-				{"FlatTensors", "RicciScalar", "RicciScalar"}
+				{"FlatTensors", "RicciScalar", "RicciScalar"},
+
+            KeyExistsQ[bundle, "ds2"],
+                {"Tensors", "RicciScalar", "RicciScalar"}
 			],
 		_,
 			{"Tensors", tensorName, tensorName}
@@ -1495,10 +1500,13 @@ Clear[BuildHodge];
 SetAttributes[BuildHodge, HoldFirst];
 BuildHodge[bundle_, simp_:PaiSimplify] := Module[{},
 	Which[
-	KeyExistsQ[bundle, "ds2"],
-		Return[BuildHodgeMetric[bundle, simp]],
-	KeyExistsQ[bundle, "eU"],
-		Return[BuildHodgeVielbein[bundle, simp]],
+
+    VielbeinBundleQ[bundle],
+        Return[BuildHodgeVielbein[bundle, simp]],
+
+    KeyExistsQ[bundle, "ds2"],
+        Return[BuildHodgeMetric[bundle, simp]],
+
 	True,
 		Print["[ Aborting ] BuildHodge: ds2 or eU are not given."];
 	];
@@ -1624,7 +1632,8 @@ SetAttributes[InitVielbeinBundle, HoldFirst];
 
 InitVielbeinBundle[bundle_, simp_:PaiSimplify] := Module[
 	{eTodx, dxToe, symbs, eU, contraction, coordbasis, hstar,
-	deU, dictde, FormSquareTools, aIter, muIter, eta, etaUU, gdd, gUU, Agdd, AgUU},
+	deU, dictde, FormSquareTools, aIter, muIter, eta,
+    etaUU, gdd, gUU, Agdd, AgUU, eamuUd, eamudU, buildSymmetric2, Tensors},
 
 	bundle = Association[bundle];
 
