@@ -895,32 +895,46 @@ TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContrac
 
 TensorProductContract[tensor_, contractIndices_List] := TensorContract[tensor, contractIndices];
 
+SetAttributes[ApplyIndexChange, HoldRest];
+SetAttributes[MetricForIndexChange, HoldFirst];
+
+MoveIndicesWithMetric[tensor_, metric_, positions_] := Module[
+    {sortedPositions, rank, relations, metricSequence,
+     contracted, permutation},
+
+    sortedPositions = Sort[positions];
+    rank = Length[Dimensions[tensor]];
+
+    relations = Table[
+                    {sortedPositions[[n]], rank + 2 n - 1}
+                , {n, Length[sortedPositions]}
+                ];
+
+    metricSequence = Sequence @@ ConstantArray[SparseArray[metric], Length[sortedPositions]];
+
+    contracted = TensorProductContract[tensor, metricSequence, relations];
+
+    permutation = Join[
+        Complement[Range[rank], sortedPositions],
+        sortedPositions
+    ];
+
+    Transpose[contracted, permutation]
+];
+
+MetricForIndexChange[bundle_, {"dn", "up"}] := GetTensorArray[bundle, "gUU"];
+MetricForIndexChange[bundle_, {"up", "dn"}] := GetTensorArray[bundle, "gdd"];
+MetricForIndexChange[bundle_, {"vdn", "vup"}] := Inverse[GetFlatMetric[bundle]];
+MetricForIndexChange[bundle_, {"vup", "vdn"}] := GetFlatMetric[bundle];
+
+ApplyIndexChange[tensor_, bundle_, change_, positions_] := MoveIndicesWithMetric[tensor, MetricForIndexChange[bundle, change], positions];
+
 SetAttributes[RaiseIndices, HoldRest];
 SetAttributes[LowerIndices, HoldRest];
 
-RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
-	Module[{gUU, RaisePositions, rank, RaiseRelations, metricSequence, TensorUpPermuted, indexPermutation},
-		RaisePositions = Sort[indicesRaisePosition];
-		rank = Length[Dimensions[TensorSparsedown]];
-		RaiseRelations = Table[{RaisePositions[[n]], rank + 2*n-1}, {n, 1, Length[RaisePositions]}];
-		gUU = SparseArray[GetTensorArray[bundle, "gUU"]];
-		metricSequence = Sequence @@ ConstantArray[gUU, Length[RaisePositions]];
-		TensorUpPermuted = TensorProductContract[TensorSparsedown, metricSequence,RaiseRelations];
-		indexPermutation = Join[Complement[Range[rank], RaisePositions], RaisePositions];
-		Return[Transpose[TensorUpPermuted, indexPermutation]];
-	];
+RaiseIndices[tensor_, bundle_, positions_] := ApplyIndexChange[tensor, bundle, {"dn", "up"}, positions];
 
-LowerIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
-	Module[{gdd, RaisePositions, rank, RaiseRelations, metricSequence, TensorUpPermuted, indexPermutation},
-		RaisePositions = Sort[indicesRaisePosition];
-		rank = Length[Dimensions[TensorSparsedown]];
-		RaiseRelations = Table[{RaisePositions[[n]], rank + 2*n-1}, {n, 1, Length[RaisePositions]}];
-		gdd = SparseArray[GetTensorArray[bundle, "gdd"]];
-		metricSequence = Sequence @@ ConstantArray[gdd, Length[RaisePositions]];
-		TensorUpPermuted = TensorProductContract[TensorSparsedown, metricSequence,RaiseRelations];
-		indexPermutation = Join[Complement[Range[rank], RaisePositions], RaisePositions];
-		Return[Transpose[TensorUpPermuted, indexPermutation]];
-	];
+LowerIndices[tensor_, bundle_, positions_] := ApplyIndexChange[tensor, bundle, {"up", "dn"}, positions];
 
 (*
 				---- Covariant derivative ----
@@ -2146,51 +2160,6 @@ PaiDef[bundle_][tensor_String, object_] := Module[
 
 PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray];
 
-Clear[AdjustIndicesPositions];
-SetAttributes[AdjustIndicesPositions, HoldRest];
-AdjustIndicesPositions[best_, tensorSign_, bundle_, simp_:PaiSimplify]:=Module[{bestSign, bestInd, targetInd, changes, raisePos, lowerPos, raisePosV, lowerPosV, sparse},
-	bestSign = First[Keys[best]];
-	bestInd = TensorSignAllIndices[bestSign];
-	targetInd = TensorSignAllIndices[tensorSign];
-	If[bestInd === targetInd,
-		Return[]
-	];
-
-    changes = MapThread[
-        List,
-        {bestInd, targetInd}
-    ];
-
-    raisePos = Flatten[Position[changes, {"dn", "up"}]];
-    lowerPos = Flatten[Position[changes, {"up", "dn"}]];
-    raisePosV = Flatten[Position[changes, {"vdn", "vup"}]];
-    lowerPosV = Flatten[Position[changes, {"vup", "vdn"}]];
-
-	sparse = First[Values[best]];
-
-    Print["** Computing ", TensorSignToString[tensorSign]];
-	
-	If[lowerPos =!= {},
-		sparse = LowerIndices[sparse, bundle, lowerPos]
-	];
-	
-	If[raisePos =!= {},
-		sparse = RaiseIndices[sparse, bundle, raisePos]
-	];
-
-    If[raisePosV =!= {},
-        Abort[];
-        sparse = RaiseIndicesV[sparse, bundle, raisePosV]
-    ];
-
-    If[lowerPosV =!= {},
-        Abort[];
-        sparse = LowerIndicesV[sparse, bundle, lowerPosV]
-    ];
-
-	StoreComputedTensor[bundle, tensorSign, sparse, simp]
-];
-
 $IndexDistanceGraph = Graph[
     {
         Property["vdn" -> "vup", EdgeWeight -> 1],
@@ -2209,24 +2178,29 @@ $IndexDistanceGraph = Graph[
 
 IndexDistance[from_, to_] := GraphDistance[$IndexDistanceGraph, from, to];
 
-TensorSignDistance[candidate_, target_] := Module[
-    {candidateIndices, targetIndices, nDerOrder},
+FindIndexPath[from_, to_] := FindShortestPath[$IndexDistanceGraph, from, to];
 
-    candidateIndices = Join[
-        TensorSignIndices[candidate],
-        TensorSignDerivatives[candidate]
-    ];
-    
+TruncateTargetIndices[candidate_, target_] := Module[
+    {nDerOrder},
     nDerOrder = TensorSignDerivativeOrder[candidate];
-    targetIndices = Join[
-        TensorSignIndices[target],
-        Take[TensorSignDerivatives[target], -nDerOrder]
-    ];
+    Join[
+        Take[TensorSignDerivatives[target], -nDerOrder],
+        TensorSignIndices[target]
+    ]
+];
 
+FindTensorSignPath[candidate_, target_] := Module[{},
+    MapThread[
+        FindIndexPath,
+        {TensorSignAllIndices[candidate], TruncateTargetIndices[candidate, target]}
+    ]
+];
+
+TensorSignDistance[candidate_, target_] := Module[{},
     Total[
         MapThread[
             IndexDistance,
-            {candidateIndices, targetIndices}
+            {TensorSignAllIndices[candidate], TruncateTargetIndices[candidate, target]}
         ]
     ]
 ];
@@ -2241,7 +2215,45 @@ FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[
     KeyTake[closests, {bestSign}]
 ];
 
+CurrentIndexChangeBatch[paths_] := Module[
+    {indexedChanges},
 
+    indexedChanges = MapIndexed[
+        Function[{path, position},
+            If[
+                Length[path] > 1,
+                {Take[path, 2], First[position]},
+                Nothing
+            ]
+        ],
+        paths
+    ];
+
+    GroupBy[indexedChanges, First -> Last]
+];
+
+NextIndexPaths[paths_] := Map[If[Length[#] > 1, Rest[#], #] &, paths];
+
+FollowTensorSignPaths[tensor_, bundle_, paths_] := Module[
+    {result, remaining, batch},
+
+    result = tensor;
+    remaining = paths;
+
+    While[AnyTrue[remaining, Length[#] > 1 &],
+
+        batch = CurrentIndexChangeBatch[remaining];
+
+        KeyValueMap[
+            (result = ApplyIndexChange[result, bundle, #1, #2]) &,
+            batch
+        ];
+
+        remaining = NextIndexPaths[remaining];
+    ];
+
+    result
+];
 
 Clear[ComputeCovDTensor];
 SetAttributes[ComputeCovDTensor, HoldRest];
@@ -2318,18 +2330,42 @@ ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
 
 	closestDerivatives = KeyTake[usefullComputed, MaximalBy[Keys[usefullComputed], TensorSignDerivativeOrder]
     ];
+
 	best = FindMostSimilarTensor[closestDerivatives, tensorSign];
-	
+    bestSign = First[Keys[best]];
+
     If[
-        TensorSignDerivativeOrder[First[Keys[best]]] === TensorSignDerivativeOrder[tensorSign],
-            AdjustIndicesPositions[best, tensorSign, bundle, simp];
+        TensorSignDerivativeOrder[bestSign] ===
+            TensorSignDerivativeOrder[tensorSign],
+
+        If[bestSign === tensorSign,
             Return[]
+        ];
+
+        sparse = First[Values[best]];
+
+        Print["** Computing ", TensorSignToString[tensorSign]];
+
+        sparse = FollowTensorSignPaths[
+            sparse,
+            bundle,
+            FindTensorSignPath[bestSign, tensorSign]
+        ];
+
+        StoreComputedTensor[
+            bundle,
+            tensorSign,
+            sparse,
+            simp
+        ];
+
+        Return[]
     ];
+
     ComputeCovDTensor[best, bundle, simp];
+
     ComputeSingleRequiredTensors[tensorSign, bundle, simp]
-
-
-]
+];
 
 Clear[ComputeRequiredTensors];
 
