@@ -48,6 +48,9 @@ PaiDef stores the definition symbolically and does not compute tensor components
 The current implementation supports monomial tensor expressions without
 parenthesized sums.";
 
+
+PaiCalc::usage = "PaiCalc[bundle][\"T(indices)\"] computes the tensor in bundle."
+
 PaiComponents::usage = "PaiComponents[bundle][\"T(indices)\"] returns the components of the tensor previously computed."
 PaiCompute::usage =
 "PaiCompute[bundle][\"T(indices)\"] computes the components of a tensor
@@ -2221,7 +2224,10 @@ PaiDef[bundle_][tensor_String, object_] := Module[
     Print["** Tensor registered ", TensorSignToString[tensorSign]];
 ];
 
-PaiDef[tensor_String, tensorArray_] := PaiDef[globalBundle][tensor, tensorArray];
+PaiDef[tensor_String, tensorArray_] := Module[{},
+    InitGlobalBundle[];
+    PaiDef[globalBundle][tensor, tensorArray]
+    ];
 
 $IndexDistanceGraph = Graph[
     {
@@ -2474,9 +2480,11 @@ Clear[EvalScalarQuantities];
 EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[TensorSignHead[#]]&, KeySelect[ComputedTensors, ScalarTensorQ]]]
 
 Clear[PaiCompute];
+Clear[PaiCalc];
 
 SetAttributes[PaiCompute, HoldFirst];
-
+SetAttributes[PaiCalc, HoldFirst];
+PaiCalc[y___]:=PaiCompute[y];
 PaiCompute[bundle_][spec_String, simp_:PaiSimplify] := Module[
     {tensorSign},
     tensorSign = TensorStringToSign[spec];
