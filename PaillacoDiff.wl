@@ -2558,6 +2558,11 @@ DecomposeDefinition[expr_String] := Module[
     str = StripOuterParentheses[StringTrim[expr]];
 
     If[
+        StringStartsQ[str, "+"],
+        str = StringTrim[StringDrop[str, 1]]
+    ];
+
+    If[
         TensorLeafQ[str],
         Return[str]
     ];

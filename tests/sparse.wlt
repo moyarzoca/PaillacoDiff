@@ -76,7 +76,9 @@ definitions = {
 
     "A17{a b} := X{a b}/2 - Y{b a}/3",
 
-    "A18{a b} := (X{a b}/2 - Y{b a})/3/4"
+    "A18{a b} := (X{a b}/2 - Y{b a})/3/4",
+
+    "A19{a b} := +X{a b}"
 };
 
         PartialContract[Xdd - 2*Ydd, Xdd + Ydd] - 1/4*gddTest*Contract2[Xdd, Xdd]
@@ -141,7 +143,9 @@ expected = <|
 
     "A17(dn,dn)" -> Xdd/2 - Transpose[Ydd]/3,
 
-    "A18(dn,dn)" -> (Xdd/2 - Transpose[Ydd])/3/4
+    "A18(dn,dn)" -> (Xdd/2 - Transpose[Ydd])/3/4,
+
+    "A19(dn,dn)" -> Xdd
 |>;
 
 tests = KeyValueMap[
