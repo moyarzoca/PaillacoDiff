@@ -117,3 +117,49 @@ VerificationTest[
     TestID -> "Weyl tensor computation"
 ];
 
+VerificationTest[
+    Module[{bund},
+        bund = MakeSparseTestBundle[];
+
+        PaiDef[bund][
+            "Bianchi{a b c d} := R{a b c d} + R{a c d b} + R{a d b c}"
+        ];
+
+        PaiCompute[bund]["Bianchi(dn,dn,dn,dn)"];
+
+        Simplify[
+            PaiComponents[bund]["Bianchi(dn,dn,dn,dn)"]
+        ]
+    ],
+    ConstantArray[0, {4, 4, 4, 4}],
+    TestID -> "Algebraic Bianchi identity"
+];
+
+VerificationTest[
+    Module[{bund},
+        bund = MakeSparseTestBundle[];
+
+        PaiDef[bund][
+            "GB := R{a b c d}*R{^a ^b ^c ^d}
+                - 4*R{a b}*R{^a ^b}
+                + Ricciscalar^2"
+        ];
+
+        PaiDef[bund][
+            "HGB{a b} := 2*(
+                  Ricciscalar*R{a b}
+                - 2*R{a c}*R{b ^c}
+                - 2*R{^c ^d}*R{a c b d}
+                + R{a ^c ^d ^e}*R{b c d e}
+            ) - 1/2*g{a b}*GB"
+        ];
+
+        PaiCompute[bund]["HGB(dn,dn)"];
+
+        Simplify[
+            PaiComponents[bund]["HGB(dn,dn)"]
+        ]
+    ],
+    ConstantArray[0, {4, 4}],
+    TestID -> "Gauss-Bonnet tensor vanishes in four dimensions"
+];
