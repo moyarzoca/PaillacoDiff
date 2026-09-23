@@ -107,3 +107,13 @@ VerificationTest[
     TestID -> "Vielbein - curvature 2-form check"
 ];
 
+VerificationTest[
+    Module[{bund},
+        bund = MakeBundleAdS6Poincare[];
+        PaiCalc[bund]["Weyl(dn, dn, dn, dn)"];
+        Simplify[PaiComponents[bund]["Weyl(dn,dn,dn,dn)"]]
+    ],
+    ConstantArray[0, {6, 6, 6, 6}],
+    TestID -> "Weyl tensor computation"
+];
+

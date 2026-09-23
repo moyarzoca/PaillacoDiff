@@ -17,3 +17,8 @@ MakeVielbeinBundleAdS5[] := <|
     "coord" -> {t,r,theta,phi1, phi2},
     "basis"->Array[Z, 5]
 |>;
+
+MakeBundleAdS6Poincare[] := <|
+    "ds2"->-r^2*d[t]^2 + d[r]^2/r^2 + r^2*(d[x1]^2 + d[x2]^2 + d[x3]^2+d[x4]^2),
+    "coord"->{t, r, x1,x2,x3,x4}
+|>;

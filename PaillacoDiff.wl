@@ -2120,6 +2120,8 @@ ReadTensorSignature[tensor_String] := Module[
 
 Clear[PaiDef, $DefTensors];
 $DefTensors=<| "shared" -> <| |> |>;
+
+
 SetAttributes[PaiDef, HoldFirst];
 
 DefineStringTensor[storage_, tensorDef_String] := Module[
@@ -2155,6 +2157,8 @@ DefineStringTensor[storage_, tensorDef_String] := Module[
         ]
     ];
 ];
+
+
 
 PaiDef[tensorDef_String] := DefineStringTensor["shared", tensorDef];
 
@@ -2790,7 +2794,12 @@ EvaluateScalarLeaf[leaf_String, bundle_, simp_:PaiSimplify] := Module[
        {requiredScalars, value},
        requiredScalars = FindRequiredScalars[{leaf}, bundle];
        ComputeRequiredTensors[requiredScalars, bundle, simp];
-       value = ToExpression[leaf] /. EvalScalarQuantities[$ComputedTensors[bundle["id"]]];
+       value = ToExpression[
+            StringReplace[
+                leaf,
+                "dimInter" -> ToString[Length[bundle["coord"]]]
+            ]
+        ] /. EvalScalarQuantities[$ComputedTensors[bundle["id"]]];
        <|"value" -> value, "indices" -> {}|>
 ];
 
@@ -3014,6 +3023,12 @@ TensorStringToSign[spec_String] := Module[
 
     {head, indices, {}}
 ];
+
+DefineStringTensor[
+    "shared",
+    "Weyl{a b c d} := R{a b c d} - 1/(dimInter-2)*(g{a c}*R{d b} - g{b c}*R{d a}-g{a d}*R{c b} + g{b d}*R{c a}) + 1/(dimInter-1)/(dimInter-2)*Ricciscalar*(g{a c}*g{d b} - g{a d}*g{c b})"
+];
+
 
 End[]
 
