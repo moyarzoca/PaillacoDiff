@@ -2911,8 +2911,8 @@ AlignEvaluatedIndices[term_Association, targetIndices_List] := Module[
     ];
 
     permutation = Map[
-        First[FirstPosition[indices, #]] &,
-        targetIndices
+        First[FirstPosition[targetIndices, #]] &,
+        indices
     ];
 
     If[permutation === Range[Length[permutation]],
