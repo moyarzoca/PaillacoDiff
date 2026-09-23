@@ -2553,7 +2553,7 @@ PaiComponents[spec_] /; StringQ[spec] := PaiComponents[globalBundle][spec];
 Clear[DecomposeDefinition];
 
 DecomposeDefinition[expr_String] := Module[
-    {str, terms, factors},
+    {str, terms, factors, division},
 
     str = StripOuterParentheses[StringTrim[expr]];
 
@@ -2577,6 +2577,17 @@ DecomposeDefinition[expr_String] := Module[
         Length[factors] > 1,
         Return[
             <|"times" -> Map[DecomposeDefinition, factors]|>
+        ]
+    ];
+
+    division = SplitTensorDivide[str];
+
+    If[
+        Length[division] > 1,
+        Return[
+            <|
+                "divide" -> Map[DecomposeDefinition, division]
+            |>
         ]
     ];
 
@@ -2686,6 +2697,25 @@ SplitTensorTimes[expr_String] := Module[
     terms
 ];
 
+Clear[SplitTensorDivide];
+
+SplitTensorDivide[expr_String] := Module[
+    {positions, pos},
+
+    positions = TopLevelOperatorPositions[expr, {"/"}];
+
+    If[positions === {},
+        Return[{expr}]
+    ];
+
+    pos = Last[positions];
+
+    {
+        StringTrim[StringTake[expr, pos - 1]],
+        StringTrim[StringDrop[expr, pos]]
+    }
+];
+
 Clear[OuterParenthesizedQ];
 
 OuterParenthesizedQ[expr_String] := Module[
@@ -2787,6 +2817,12 @@ EvaluateDefinitionTree[<|"plus" -> children_|>, bundle_, simp_:PaiSimplify] := E
 EvaluateDefinitionTree[<|"times" -> children_|>, bundle_, simp_:PaiSimplify] := EvaluateTimes[
            Map[EvaluateDefinitionTree[#, bundle, simp] &, children], simp
        ];
+
+EvaluateDefinitionTree[<|"divide" -> {num_, den_}|>, bundle_, simp_:PaiSimplify] := EvaluateDivide[
+    EvaluateDefinitionTree[num, bundle, simp], EvaluateDefinitionTree[den, bundle, simp]
+];
+
+EvaluateDivide[num_, den_] := <| "value" -> num["value"]/den["value"], "indices" -> num["indices"] |>;
 
 Clear[EvaluateScalarLeaf];
 
