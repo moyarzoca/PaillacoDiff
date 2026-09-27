@@ -72,8 +72,8 @@ PaiCalc::usage =
 PaiComponents::usage =
     "PaiComponents[\"T(indices)\"] / PaiComponents[bundle][\"T(indices)\"] returns a previously computed tensor as an array.";
 
-Paillaco::usage =
-    "Paillaco[\"T(indices)\"] / Paillaco[bundle][\"T(indices)\"] computes the requested tensor if necessary and returns its components.";
+PaiCalcd::usage =
+    "PaiCalcd[\"T(indices)\"] / PaiCalcd[bundle][\"T(indices)\"] computes the requested tensor if necessary and returns its components.";
 
 (* ---------- Public globals ---------- *)
 
@@ -2512,15 +2512,15 @@ PaiCompute[spec_, simp_:PaiSimplify] /; StringQ[spec] := Module[
     PaiCompute[globalBundle][spec, simp];
 ];
 
-Clear[Paillaco];
-SetAttributes[Paillaco, HoldFirst];
+Clear[PaiCalcd];
+SetAttributes[PaiCalcd, HoldFirst];
 
-Paillaco[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
+PaiCalcd[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
     PaiCompute[bundle][spec, simp];
     PaiComponents[bundle][spec]
 ];
 
-Paillaco[spec_String, simp_:PaiSimplify] := Module[{},
+PaiCalcd[spec_String, simp_:PaiSimplify] := Module[{},
     PaiCompute[spec, simp];
     PaiComponents[spec]
 ];

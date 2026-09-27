@@ -34,7 +34,7 @@ globalTests = {
             ds2 = -d[t]^2 + d[r]^2 + r^2*(d[theta]^2 + Sin[theta]^2*d[phi]^2);
             coord = {t,r,theta,phi};
 
-            Paillaco["R(dn, dn)", Simplify]
+            PaiCalcd["R(dn, dn)", Simplify]
         ],
         ConstantArray[0, {4, 4}],
         TestID -> "<global> consistent change from (ds2, coord) to (ds2', coord')"
@@ -45,7 +45,7 @@ globalTests = {
             ds2=-f[r]*d[t]^2 + d[r]^2/f[r] + r^2*(d[theta]^2 + Sin[theta]^2*d[phi]^2);
             coord = {t,r,theta,phi};
 
-            Simplify[Simplify[Paillaco["R(up,dn)"]] /. f->Function[{r}, 1-2*M/r]]
+            Simplify[Simplify[PaiCalcd["R(up,dn)"]] /. f->Function[{r}, 1-2*M/r]]
         ],
         ConstantArray[0, {4, 4}],
         TestID -> "<global> R(up,dn) on demand"

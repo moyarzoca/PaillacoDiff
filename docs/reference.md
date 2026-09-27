@@ -136,4 +136,17 @@ The first uses global mode, while the second uses bundle mode.
 
 ---
 
+### `PaiCalcd`
+
+It is a combination of PaiCalc and PaiComponents: it computes and returns the tensor components as an array.
+
+```mathematica
+PaiCalcd["T(dn,dn)"]
+PaiCalcd[bundle]["T(dn,dn)"]
+```
+The first uses global mode, while the second uses bundle mode.
+
+
+---
+
 

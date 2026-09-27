@@ -90,7 +90,7 @@ VerificationTest[
         PaiCalc[bundV]["xi(vdn)"];
         xivdn = PaiComponents[bundV]["xi(vdn)"];
         PaiDef[bundV]["zi(vdn)", xivdn];
-        Paillaco[bundV]["zi(up)"]
+        PaiCalcd[bundV]["zi(up)"]
     ],
     {1,0,0,0,0},
     TestID -> "Vielbein - flat/coord index transformations"
