@@ -4,7 +4,18 @@ This document summarizes the geometric conventions used by PaillacoDiff.
 
 Greek indices $\mu,\nu,\rho,\ldots$ denote coordinate indices, while Latin indices $a,b,c,\ldots$ denote vielbein indices.
 
-## Metric and Christoffel symbols
+In component notation, `dn` and `up` denote lower and upper coordinate indices, while `vdn` and `vup` denote lower and upper vielbein indices.
+
+PaillacoDiff uses the following names for the standard geometric tensors:
+
+- `g` -- metric tensor, e.g. `g{a b}` and `g(dn,dn)`.
+- `R` -- Riemann tensor, e.g. `R{a b c d}` and `R(dn,dn,dn,dn)`.
+- `R` -- Ricci tensor, e.g. `R{a b}` and `R(dn,dn)`.
+- `Ricciscalar` -- Ricci scalar.
+- `omega` -- spin connection 1-form, e.g. `omega(vdn,vdn)`
+- `Rform` -- curvature 2-form, e.g. `Rform(vdn,vdn)`
+
+### Metric and Christoffel symbols
 
 The metric and its inverse satisfy
 
@@ -27,7 +38,7 @@ $$
 \right).
 $$
 
-## Riemann tensor
+### Riemann tensor
 
 The Riemann tensor convention is
 
@@ -45,7 +56,7 @@ R^\rho{}_{\sigma\mu\nu}
 \Gamma^\lambda{}_{\sigma\mu}.
 $$
 
-## Ricci tensor
+### Ricci tensor
 
 The Ricci tensor is obtained by contracting the first and third indices of the Riemann tensor,
 
@@ -57,7 +68,7 @@ R^\rho{}_{\mu\rho\nu}
 g^{\rho\sigma}R_{\rho\mu\sigma\nu}.
 $$
 
-## Ricci scalar
+### Ricci scalar
 
 The Ricci scalar is
 
@@ -67,7 +78,7 @@ R
 g^{\mu\nu}R_{\mu\nu}.
 $$
 
-## Vielbein
+### Vielbein
 
 The vielbein one-forms are defined by
 
@@ -98,7 +109,7 @@ e_a{}^\mu e^b{}_\mu
 \delta_a{}^b.
 $$
 
-## Spin connection
+### Spin connection
 
 PaillacoDiff uses the torsion-free spin connection. It is defined by the first Cartan structure equation,
 
@@ -126,19 +137,7 @@ $$
 -\omega_{ba}.
 $$
 
-Equivalently, the vielbein postulate is
-
-$$
-\partial_\mu e^a{}_\nu
-+
-\omega^a{}_{b\mu}e^b{}_\nu
--
-\Gamma^\rho{}_{\mu\nu}e^a{}_\rho
-=
-0.
-$$
-
-## Curvature two-form
+### Curvature two-form
 
 The curvature two-form is defined by the second Cartan structure equation,
 
