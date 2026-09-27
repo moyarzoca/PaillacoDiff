@@ -2,7 +2,7 @@
 
 # Differential forms
 
-We normalize a $p$-form as
+We normalize a $p$ -form as
 
 $$
 F = \frac{1}{p!} F_{\mu_1 \dots \mu_p} dx^{\mu_1} \wedge \dots \wedge dx^{\mu_{p}}
