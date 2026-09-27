@@ -2,99 +2,106 @@
 
 BeginPackage["PaillacoDiff`"]
 
-(* ---------- Public functions ---------- *)
+(* ---------- Differential forms ---------- *)
 
-FormDegree::usage = "FormDegree[expr] returns the degree of a differential form (0 for scalars)."
-Wedge::usage = "Wedge[x, y, ...] is the exterior (wedge) product of forms."
-d::usage = "d[expr] is the exterior derivative."
-PolyFormQ::usage = "PolyFormQ[expr] tests whether expr is a sum of forms of different degrees."
+FormDegree::usage =
+    "FormDegree[expr] returns the degree of a differential form; scalars have degree 0.";
 
-Extractor::usage = "Extractor[F, A] extracts the coefficient of 1-form A in polyform F."
-Extractorleft::usage = "Extractorleft[F, A] extracts A from the left side of each term."
-coordcontraction::usage = "coordcontraction[X, coord] contracts X with all coordinate 1-forms."
+Wedge::usage =
+    "Wedge[x, y, ...] computes the exterior product of differential forms.";
 
-DNAofForm::usage = "DNAofForm[X] decomposes form X into {{coeff, indices}, ...}."
-SparseFromDNA::usage = "SparseFromDNA[DNA, dim, deg] converts DNA to a SparseArray."
-DNAFromSparse::usage = "DNAFromSparse[sparse] converts a SparseArray back to DNA."
-BuildSquaresTools::usage = "BuildSquaresTools[bundle] builds FormSquare/FormSquaredd closures."
-FormSquare::usage = "FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
-FormSquaredd::usage = "FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
-Hstar::usage = "Hstar[X] computes the Hodge dual of form X."
-FormToSparse::usage = "FormToSparse[X] converts a form to a SparseArray."
-FormsToMatrix::usage = "FormsToMatrix[X, deg, coord] converts a form X to a dense matrix. deg is an Integer and the degree of the form, and coord are the coordinates."
+d::usage =
+    "d[expr] computes the exterior derivative.";
 
-ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
-DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
-Computegdd::usage = "Computegdd[bundle] computes gdd and sqrtdetg for a bundle."
-ComputeChrisUdd::usage = "ComputeChrisUdd[] computes Christoffel symbols from global gdd, coord."
-ComputeRdd::usage = "ComputeRdd[] computes the Ricci tensor."
-ComputeRicciScalar::usage = "ComputeRicciScalar[] computes the Ricci scalar."
-SetVielbein::usage = "SetVielbein[eIN, eta] sets up the vielbein basis and defines global variables."
-ComputeSpinConnection::usage = "ComputeSpinConnection[eIN, eta] computes the spin connection 1-form."
+PolyFormQ::usage =
+    "PolyFormQ[expr] tests whether expr contains forms of different degrees.";
 
-InitMetricTools::usage = "InitMetricTools[bundle] constructs Hstar, FormSquare, and FormSquaredd associated with the bundle.";
-TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
-RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
-PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
-GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
-PaiComputeMetric::usage = "PaiComputeMetric[bundle] computes metric from bundle's ds2."
-PaiComputeChrisUdd::usage = "PaiComputeChrisUdd[bundle] computes Christoffel symbols from bundle."
-PaiComputeRdddd::usage = "PaiComputeRdddd[bundle] computes the Riemann tensor."
-PaiComputeRdd::usage = "PaiComputeRdd[bundle] computes the Ricci tensor."
-PaiComputeRicciScalar::usage = "PaiComputeRicciScalar[bundle] computes the Ricci scalar."
-PaiComputeBundleTensors::usage = "PaiComputeBundleTensors[bundle, level] computes tensors and derived geometric structures up to the requested level. PaiComputeBundleTensors[bundle, \"levels\"] returns the available levels for the bundle."
-BuildHodge::usage = "BuildHodge[bundle] builds a Hodge star function for a bundle."
-BuildHodgeMetric::usage = "BuildHodgeMetric[bundle] builds a coordinate-basis Hodge star function."
-BuildHodgeVielbein::usage = "BuildHodgeVielbein[bundle] builds a vielbein-basis Hodge star function."
-PaiComputeSpinConnection::usage = "PaiComputeSpinConnection[bundle] computes spin connection in bundle."
-PaiComputeCurvatureForm::usage = "PaiComputeCurvatureForm[bundle] computes curvature 2-form."
-PaiComputeRddddFlat::usage = "PaiComputeRddddFlat[bundle] computes Riemann in flat (vielbein) basis."
-PaiComputeRddFlat::usage = "PaiComputeRddFlat[bundle] computes Ricci in flat basis."
-PaiComputeRicciScalarFlat::usage = "PaiComputeRicciScalarFlat[bundle] computes Ricci scalar in flat basis."
+Extractor::usage =
+    "Extractor[F, A] / Extractor[F, A, side] extracts the coefficient of the 1-form A from F; side is \"right\" by default.";
+
+(* ---------- Form representations ---------- *)
+
+DNAofForm::usage =
+    "DNAofForm[X] / DNAofForm[X, basis] decomposes X into {{coeff, indices}, ...}.";
+
+SparseFromDNA::usage =
+    "SparseFromDNA[DNA, dim, deg] converts a DNA representation to a SparseArray.";
+
+DNAFromSparse::usage =
+    "DNAFromSparse[sparse] converts a SparseArray to a DNA representation.";
+
+FormToSparse::usage =
+    "FormToSparse[X] / FormToSparse[X, deg] / FormToSparse[X, deg, coord] converts X to a SparseArray.";
+
+FormToMatrix::usage =
+    "FormToMatrix[X] / FormToMatrix[X, deg] / FormToMatrix[X, deg, coord] converts X to a dense array.";
+
+(* ---------- Form operations ---------- *)
+
+FormSquare::usage =
+    "FormSquare[X] / FormSquare[bundle][X] computes F_{mu1...mup} F^{mu1...mup}.";
+
+FormSquaredd::usage =
+    "FormSquaredd[X] / FormSquaredd[bundle][X] computes F_{mu r1...r(p-1)} F_nu^{r1...r(p-1)}.";
+
+Hstar::usage =
+    "Hstar[X] / Hstar[bundle][X] computes the Hodge dual of X.";
+
+Contraction::usage =
+    "Contraction[X] / Contraction[bundle][X] computes contractions of X in the corresponding differential-form basis.";
+
+(* ---------- Tensor utilities ---------- *)
+
+DiffToMatrix::usage =
+    "DiffToMatrix[ds2] / DiffToMatrix[ds2, coord] extracts the metric array from a line element.";
+
+TensorProductContract::usage =
+    "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts specified pairs of tensor-product indices.";
+
+PaiSimplify::usage =
+    "PaiSimplify[expr] applies PaillacoDiff's default lightweight algebraic simplification.";
+
+(* ---------- Tensor manipulation ---------- *)
+
+PaiDef::usage =
+    "PaiDef[\"T{indices} := expression\"] / PaiDef[bundle][\"T{indices} := expression\"] defines a symbolic tensor; PaiDef[\"T(indices)\", object] / PaiDef[bundle][\"T(indices)\", object] defines a tensor from an explicit object.";
+
+PaiCalc::usage =
+    "PaiCalc[\"T(indices)\"] / PaiCalc[bundle][\"T(indices)\"] computes the requested tensor.";
+
+PaiComponents::usage =
+    "PaiComponents[\"T(indices)\"] / PaiComponents[bundle][\"T(indices)\"] returns a previously computed tensor as an array.";
+
+Paillaco::usage =
+    "Paillaco[\"T(indices)\"] / Paillaco[bundle][\"T(indices)\"] computes the requested tensor if necessary and returns its components.";
 
 (* ---------- Public globals ---------- *)
 
-PaiNonCommutativeScalarQ::usage = "PaiNonCommutativeScalarQ[expr] tests whether expr contains a registered noncommutative scalar coefficient.";
-PaiRegisterNonCommutativeScalarQ::usage = "PaiRegisterNonCommutativeScalarQ[test] registers a predicate test[expr] used by Wedge to detect noncommutative scalar coefficients.";
+coord::usage =
+    "coord is the list of coordinates used in global mode.";
 
-PaiSimplify::usage = "PaiSimplify[expr] applies PaillacoDiff's default lightweight algebraic simplification.";
-$UsePaiSimplify::usage = "$UsePaiSimplify controls whether PaiSimplify applies automatic simplification. Default is True.";
+ds2::usage =
+    "ds2 is the line element expressed in the coordinate basis d[x].";
 
-coord::usage = "List of coordinate variables."
-Dim::usage = "Spacetime dimension."
-gdd::usage = "Metric tensor g_{mu nu}."
-gUU::usage = "Inverse metric g^{mu nu}."
-ChrisUdd::usage = "Christoffel symbols Gamma^mu_{nu rho}."
-Rdddd::usage = "Riemann tensor R_{mu nu rho sigma}."
-Rdd::usage = "Ricci tensor R_{mu nu}."
-RicciScalar::usage = "Ricci scalar R."
-sqrtdetg::usage = "Sqrt[-det(g)]."
+(* ---------- Configuration ---------- *)
 
-\[Eta]dd::usage = "Flat (Minkowski) metric."
-\[Eta]UU::usage = "Inverse flat metric."
-e::usage = "Vielbein basis 1-forms e^a."
-eTodx::usage = "Rule mapping e^a to e^a_mu dx^mu."
-dxToe::usage = "Rule mapping dx^mu to e^a."
-eamuUd::usage = "Vielbein matrix e^a_mu."
-eamudU::usage = "Inverse vielbein matrix e_a^mu."
-eBasis::usage = "List of vielbein basis symbols {e[1], ..., e[Dim]}."
-
-\[Omega]Ud::usage = "Spin connection 1-form omega^a_b."
-\[Omega]dd::usage = "Spin connection omega_{ab} (both indices down)."
+$UsePaiSimplify::usage =
+    "$UsePaiSimplify controls automatic use of PaiSimplify; the default is True.";
 
 Begin["`Private`"]
+
+globalBundle = <| |>;
 
 ClearAll[GlobalRequired];
 SetAttributes[GlobalRequired, HoldAll];
 
-GlobalRequired::missing =
-	"Global Mode requires `1` to be defined.";
+GlobalRequired::missing = "Global Mode requires `1` to be defined.";
 
 GlobalRequired[x_Symbol] :=
-	If[
-		!ValueQ[x],
+	If[!ValueQ[x],
 		Message[GlobalRequired::missing, HoldForm[x]];
-		Abort[]
+		Abort[],
+            True
 	];
 
 GlobalRequired[x_Symbol, xs__Symbol] := (
@@ -264,6 +271,66 @@ PolyFormQ[expr_] := Module[{terms, degs,exprExpand,degsDiff},
 	];
 ];
 
+Clear[MetricDifferentialDegreeQ];
+
+MetricQuadraticInDiffQ[ds2_] := Module[
+    {lambda, scaled},
+    scaled = Expand[ds2 /. d[_] :> lambda];
+    (Exponent[scaled, lambda, Min] === 2) && (Exponent[scaled, lambda, Max] === 2)
+];
+Clear[ValidateMetricBundle];
+
+ValidateMetricBundle[bundle_] := Module[
+    {coord, metricCoord},
+
+    If[!KeyExistsQ[bundle, "coord"],
+        Print["[ Aborting ] Bundle requires key \"coord\""];
+        Abort[]
+    ];
+
+    If[KeyExistsQ[bundle, "ds2"],
+        coord = bundle["coord"];
+        metricCoord = DeleteDuplicates[Cases[bundle["ds2"], d[x_] :> x, Infinity]];
+
+        If[Sort[coord] =!= Sort[metricCoord],
+            Print[
+                "[ Aborting ] Coordinate mismatch",
+                "\nIn coord but not in metric: ", Complement[coord, metricCoord],
+                "\nIn metric but not in coord: ", Complement[metricCoord, coord]
+            ];
+            Abort[]
+        ];
+    ];
+
+    If[Not[MetricQuadraticInDiffQ[bundle["ds2"]]],
+        Print["[ Aborting ] Metric must be quadratic in your coordinates differentials ", d[coord]];
+        Abort[]
+    ];
+
+    True
+];
+
+Clear[ValidateForm];
+
+ValidateForm[bundle_][X_] := Module[
+    {allowedDifferentials, differentialForms, invalid},
+
+    allowedDifferentials = d[bundle["coord"]];
+
+    differentialForms =DeleteDuplicates[Cases[X, d[some_] :> d[some], {0, Infinity}]];
+
+    invalid = Complement[differentialForms, allowedDifferentials];
+
+    If[
+        invalid =!= {},
+        Print["[ Aborting ] Forms outside the bundle basis: ", invalid,
+        "\nDid you forget to declare a constant?"];
+        Abort[]
+    ];
+
+    True
+];
+
 Clear[coeffBaseElement];
 
 coeffBaseElement[pform_, base_]:=
@@ -299,8 +366,7 @@ coeffBaseElement[pform_, base_]:=
 	Return[{sign*coeff, baseNumb}];
 	];
 
-DNAofForm::noBaseFound = 
-	"No base element found";
+DNAofForm::noBaseFound = "No base element found";
 Clear[DNAofForm];
 
 DNAofForm[FormIn_, base_:"Global"] := Module[
@@ -413,25 +479,28 @@ Clear[BuildSquaresTools];
 SetAttributes[BuildSquaresTools, HoldFirst];
 BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis, dxToe},
 	Which[
-	KeyExistsQ[bundle, "ds2"]===True,
-		PaiComputeBundleTensors[bundle, "metric", simp];
-		gUU = GetTensorArray[bundle, "gUU"];
-		basis = d[bundle["coord"]];
-		Return[
-		   <| "FormSquare" -> Function[{X}, FormSquare[X, gUU, simp,  basis]],
-		      "FormSquaredd" -> Function[{X}, FormSquaredd[X, gUU, simp,  basis]]
-		    |>
-		],
-	KeyExistsQ[bundle, "eU"]===True,
+
+	VielbeinBundleQ[bundle],
 		eta = GetFlatMetric[bundle];
 		etainv = Inverse[eta];
 		basis = bundle["basis"];
 		dxToe = bundle["dxToe"];
 		Return[
-		    <| "FormSquare" -> Function[{X}, FormSquare[X /. dxToe, etainv, simp,  basis]],
-		    "FormSquaredd" -> Function[{X}, FormSquaredd[X /. dxToe, etainv, simp,  basis]]
+		    <| "FormSquare" -> Function[{X}, FormSquareCore[X /. dxToe, etainv, simp,  basis]],
+		    "FormSquaredd" -> Function[{X}, FormSquareddCore[X /. dxToe, etainv, simp,  basis]]
 		    |>
 		],
+
+	KeyExistsQ[bundle, "ds2"],
+		PaiComputeBundleTensors[bundle, "metric", simp];
+		gUU = GetTensorArray[bundle, "gUU"];
+		basis = d[bundle["coord"]];
+		Return[
+		   <| "FormSquare" -> Function[{X}, FormSquareCore[X, gUU, simp,  basis]],
+		      "FormSquaredd" -> Function[{X}, FormSquareddCore[X, gUU, simp,  basis]]
+		    |>
+		],
+
 	True,
 		Print["[ Aborting ] BuildSquaresTools: ds2 nor eU not given"];
 		Abort[];
@@ -439,26 +508,24 @@ BuildSquaresTools[bundle_, simp_:PaiSimplify] := Module[{gUU, eta, etainv, basis
 ];
 
 
+Clear[FormSquareCore];
 Clear[FormSquare];
-FormSquare[Xform_, gUUIN_:"Global", simp_:PaiSimplify, basisIN_:"Global"] :=
+FormSquareCore[Xform_, gUU_, simp_:PaiSimplify, basis_] :=
 Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
-	indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
-	FformValues, FtensorValues, basisint,Dim},
-	If[
-	Xform ===0,
-		Return[0]
-	];
+    indicesContract,FormComps,TensorComps,InterComps,FformRule,FtensorRule,
+    FformValues, FtensorValues,Dim},
 
-	gintUU = SparseArray[ResolveGlobal[gUUIN, gUU]];
-	basisint = ResolveGlobal[basisIN, coord, d];
+    If[Xform ===0, Return[0]];
 
-	deg = FormDegree[Xform];
-	Dim = Length[basisint];
-	FformDNA = simp[DNAofForm[Xform, basisint]];
+    gintUU = SparseArray[gUU];
+
+    deg = FormDegree[Xform];
+    Dim = Length[basis];
+	FformDNA = simp[DNAofForm[Xform, basis]];
 	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 	FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
 	
-	FormComps   = nonzeroComps[FformSparse];
+    FormComps   = nonzeroComps[FformSparse];
 	TensorComps = nonzeroComps[FtensorSparse];
 	InterComps  = Intersection[FormComps , TensorComps];
 	
@@ -471,22 +538,40 @@ Module[{deg,FformDNA, FformSparse,gintUU,listindices,seqgUU, FtensorSparse,
 	Return[(FformValues . FtensorValues)*(deg)!]
 ];
 
+SetAttributes[FormSquare, HoldFirst];
 
-Clear[FormSquaredd];
-FormSquaredd[0,__]:=0
+FormSquare[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "FormSquare"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    ValidateForm[bundle][X];
+    bundle["FormSquare"][X]
+];
 
-FormSquaredd[Xform_, gintUUinput_:"Global", simp_:PaiSimplify, basisIN_:"Global"] :=
+FormSquare[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "FormSquare"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    ValidateForm[globalBundle][X];
+    globalBundle["FormSquare"][X]
+];
+
+
+Clear[FormSquareddCore];
+FormSquareddCore[0,__]:=0
+
+FormSquareddCore[Xform_, gUU_, simp_:PaiSimplify, basis_] :=
 Module[{deg,FformDNA,FformSparse,gintUU,
-	basisint,Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
+	Dim,seqgUU,indexcontr, nonzeroUp, nonzeroDn, nonzeroInter,
 	nonzeroInterUp, nonzeroInterDn,FformRule,FtensorRule,nonzeroXd,nonzeroXdU,Xsqdd,
 	Xdmunu, XdUmunu, FtensorSparse},
 	
-	gintUU = SparseArray[ResolveGlobal[gintUUinput, gUU]];
-	basisint = ResolveGlobal[basisIN, coord, d];
+	gintUU = SparseArray[gUU];
 
-	Dim = Length[basisint];
+	Dim = Length[basis];
 	deg = FormDegree[Xform];
-	FformDNA = simp[DNAofForm[Xform, basisint]];
+	FformDNA = simp[DNAofForm[Xform, basis]];
 	FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 	
 	seqgUU = Sequence@@Table[gintUU,{IIinx,deg-1}];
@@ -518,30 +603,47 @@ Module[{deg,FformDNA,FformSparse,gintUU,
 
 ];
 
+Clear[FormSquaredd];
+SetAttributes[FormSquaredd, HoldFirst];
 
-Clear[Hstar];
-Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:PaiSimplify] := 
+FormSquaredd[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "FormSquaredd"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    ValidateForm[bundle][X];
+    bundle["FormSquaredd"][X]
+];
+
+FormSquaredd[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "FormSquaredd"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    ValidateForm[globalBundle][X];
+    globalBundle["FormSquaredd"][X]
+];
+
+Clear[Hstar, HstarCore];
+HstarCore[Xform_, gintUUIN_, sqrtdetg_, base_, simp_:PaiSimplify] := 
 	Module[{gintUU, coordint, Dim, deg, FformDNA, FformSparse, FtensorSparse,
-		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF, sqrtdetgint, baseint},
+		TensorComps,FtensorRule,FtensorValues, FtensorDict, compToStar,starF},
 
 		If[
 		Xform ===0,
 			Return[0]
 		];
 
-		gintUU = SparseArray[ResolveGlobal[gintUUIN, gUU]];
-		sqrtdetgint = ResolveGlobal[sqrtdetgIN, sqrtdetg];
-		baseint = ResolveGlobal[baseIN, coord, d];
+		gintUU = SparseArray[gintUUIN];
 		
-		Dim = Length[baseint];
+		Dim = Length[base];
 		deg = FormDegree[Xform];
 		
 		If[
 			deg===0,
-				Return[Xform*sqrtdetgint Wedge@@(baseint)]
+				Return[Xform*sqrtdetg Wedge@@(base)]
 		];
 		
-		FformDNA = simp[DNAofForm[Xform, baseint]];
+		FformDNA = simp[DNAofForm[Xform, base]];
 		FformSparse = SparseFromDNA[FformDNA, Dim, deg];
 		FtensorSparse = RaiseAllSparse[FformSparse, gintUU, deg];
 		
@@ -555,21 +657,63 @@ Hstar[Xform_, gintUUIN_:"Global", sqrtdetgIN_:"Global", baseIN_:"Global", simp_:
 			Module[{complement, toepsilon},
 				complement = Complement[Range[Dim],formcomp];
 				toepsilon = Flatten[{formcomp,complement}];
-				<|"eps"->toepsilon, "basis" -> Map[baseint[[#]]&, complement]|>
+				<|"eps"->toepsilon, "basis" -> Map[base[[#]]&, complement]|>
 			];
 		
 		starF = 
-			sqrtdetgint*Sum[
+			sqrtdetg*Sum[
 				FtensorDict[comp]*Signature[compToStar[comp]["eps"]]*Apply[Wedge, compToStar[comp]["basis"]]
 			,
 			{comp, TensorComps}];
 		Return[starF]
-	];
+    ];
+
+SetAttributes[Hstar, HoldFirst];
+
+Hstar[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "Hstar"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    ValidateForm[bundle][X];
+    bundle["Hstar"][X]
+];
+
+Hstar[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "Hstar"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    ValidateForm[globalBundle][X];
+    globalBundle["Hstar"][X]
+];
+
+Clear[Contraction];
+
+SetAttributes[Contraction, HoldFirst];
+
+Contraction[bundle_][X_] /; AssociationQ[bundle] := Module[{},
+    If[!KeyExistsQ[bundle, "contraction"],
+        PaiComputeBundleTensors[bundle, "basicTools"]
+    ];
+    bundle["contraction"][X]
+];
+
+Contraction[X_] /; !AssociationQ[X] := Module[{},
+    If[!KeyExistsQ[globalBundle, "contraction"],
+        InitGlobalBundle[];
+        PaiComputeBundleTensors[globalBundle, "basicTools"]
+    ];
+    globalBundle["contraction"][X]
+];
+
+
+Clear[NotAssociationQ];
+NotAssociationQ[x_] := !AssociationQ[x];
 
 
 
 Clear[FormToSparse];
-Clear[FormsToMatrix];
+Clear[FormToMatrix];
 FormToSparse[X_, formdegIN_:"deg", coordIN_:"Global"] :=
 Module[{coordint, Dimint, formdegint},
 	coordint = ResolveGlobal[coordIN, coord];
@@ -585,7 +729,7 @@ Module[{coordint, Dimint, formdegint},
 	Return[SparseFromDNA[DNAofForm[X, d[coordint]], Dimint,formdegint]];
 ];
 
-FormsToMatrix[X_, formdegIN_:"deg", coordIN_:"Global"] := Normal[FormToSparse[X, formdegIN, coordIN]];
+FormToMatrix[X_, formdegIN_:"deg", coordIN_:"Global"] := Normal[FormToSparse[X, formdegIN, coordIN]];
 
 (* ====== Riemann geometry ====== *)
 
@@ -633,9 +777,6 @@ PaiSimplify[expr_] := If[
 			expr
     ];
 
-Clear[GlobalGeometryID];
-
-GlobalGeometryID[gdd_, coord_] := Hash[HoldComplete[{gdd, coord}]];
 
 Clear[BuildGlobalBundle];
 
@@ -658,7 +799,7 @@ BuildGlobalBundle[gdd_, coord_, id_] := Module[
     AgUU = KeySelect[AgUU, AgUU[#] =!= 0 &];
 
     globalBundle = <|
-    	"GeometryID" -> id,
+    	"GlobalID" -> id,
         "coord" -> coord,
         "ds2" -> ds2,
 	"GlobalSync"-> {},
@@ -669,23 +810,50 @@ BuildGlobalBundle[gdd_, coord_, id_] := Module[
     |>;
 ];
 
+Clear[globalHash];
+globalHash[a_, b_] := Hash[HoldComplete[{a, b}]];
 
 Clear[InitGlobalBundle];
 
-InitGlobalBundle[gddIN_:"Global", coordIN_:"Global"] := Module[
-    {gddint, coordint, id},
+InitGlobalBundle[] := Module[
+    {gddint, coordint, id, initFrom},
 
-    coordint = ResolveGlobal[coordIN, coord];
-    gddint   = ResolveGlobal[gddIN, gdd];
+    GlobalRequired[coord];
+    coordint = coord;
 
-    id = GlobalGeometryID[gddint, coordint];
+    Which[
+    GlobalRequired[ds2],
+        initFrom = "ds2";
+        gddint = DiffToMatrix[ds2, coordint],
+    GlobalRequired[gdd],
+        initFrom = "gdd";
+        gddint = ResolveGlobal[gddIN, gdd];
+        Print["** Initializing Global bundle from gdd"],
+    True,
+        Print["[ Aborting ] neither ds2 or gdd provided as global variables"]
+    ];
 
-    If[(!AssociationQ[globalBundle]) || (Lookup[globalBundle, "GeometryID", None] =!= id),
-    	Print["Initialize New Global Bundle"];
-    	BuildGlobalBundle[gddint, coordint, id]
+    id = globalHash[gddint, coordint];
+
+    If[(!AssociationQ[globalBundle]) || (Lookup[globalBundle, "GlobalID", None] =!= id),
+        Print["** Initializing  new global bundle from "<>initFrom];
+    	BuildGlobalBundle[gddint, coordint, id];
+        CleanComputedTensors[globalBundle];
     ];
 
     globalBundle
+];
+
+Clear[CleanComputedTensors];
+
+CleanComputedTensors[bundle_] := Module[
+    {id},
+
+    If[!KeyExistsQ[bundle, "id"],
+        Return[]
+    ];
+    id = bundle["id"];
+    $ComputedTensors[id] = <||>;
 ];
 
 Clear[SetGlobalTensor];
@@ -707,31 +875,6 @@ SyncGlobalTensors[] := Module[{},
     SetGlobalTensor[RicciScalar, "RicciScalar"];
 ];
 
-Clear[ComputeChrisUdd];
-
-ComputeChrisUdd[simp_:Automatic, gddcoord_:{"Global", "Global"}] := Module[
-    {},
-    InitGlobalBundle[First[gddcoord], Last[gddcoord]];
-    PaiComputeBundleTensors[globalBundle, "ChrisUdd", simp];
-    SyncGlobalTensors[];
-];
-
-Clear[ComputeRdd];
-
-ComputeRdd[simp_:Automatic, gddcoord_:{"Global", "Global"}] :=Module[
-	{},
-	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
-    	PaiComputeBundleTensors[globalBundle, "Rdd", simp];
-	SyncGlobalTensors[];
-];
-
-ComputeRicciScalar[simp_:Automatic, gddcoord_:{"Global", "Global"}] := Module[
-	{},
-	InitGlobalBundle[First[gddcoord], Last[gddcoord]];
-    	PaiComputeBundleTensors[globalBundle, "RicciScalar", simp];
-	SyncGlobalTensors[];
-	];
-
 "Here we consider the definition of the contraction operator Contracione that take a p-form in the vielbein basis an 
 return a (p-1)-form with a Lorentz index attaced at the beggining."
 
@@ -745,71 +888,6 @@ inP[x_.*e[a_],y_.*e[b_]] := x*y*KroneckerDelta[a,b];
 inP[x_.*e[j_],y_.*HoldPattern[Wedge[e[k_],p__]]] := x*y*(KroneckerDelta[j,k]*Wedge[p]-Wedge[e[k],inP[e[j],Wedge[p]]])
 Contractione[X_, DimIn_:Dim] := Table[inP[e[a1111],X],{a1111,DimIn}];
 
-ClearAll[SetVielbein];
-SetVielbein[eIN_,flatmetric_,simp_:PaiSimplify] := Module[{},
-	ClearAll[\[Eta]dd,\[Eta]UU,eTodx,dxToe,eBasis,gdd,gUU,eamuUd,eamudU];
-	\[Eta]dd=flatmetric;
-	\[Eta]UU=Inverse[\[Eta]dd];
-	eTodx=Table[e[iiinx]->eIN[[iiinx]],{iiinx,Dim}];
-	dxToe=Solve[Table[eIN[[iiinx]]==e[iiinx],{iiinx,Dim}],Table[d[coord[[jjinx]]],{jjinx,Dim}]]//Last;
-	eBasis=Array[e,{Dim}];
-	Do[d[eBasis[[iiinx]]]=simp[(d[eIN]/.dxToe)][[iiinx]],{iiinx,Dim}];
-	eamuUd=Map[FormsToMatrix[#, 1, coord]&, eIN];
-	eamudU=Transpose[Inverse[eamuUd]];
-	Clear[gdd,gUU];
-	gdd=simp[Table[Sum[eamuUd[[a,\[Mu]1]]\[Eta]dd[[a,b]]eamuUd[[b,\[Mu]2]],{a,Dim},{b,Dim}],{\[Mu]1,Dim},{\[Mu]2,Dim}]];
-	gUU=simp[Table[Sum[eamudU[[a,\[Mu]1]]\[Eta]UU[[a,b]]eamudU[[b,\[Mu]2]],{a,Dim},{b,Dim}],{\[Mu]1,Dim},{\[Mu]2,Dim}]];
-	
-	(*-End code-Next only print what is what.*)
-	
-	Print[
-	Style["The following global variables were defined:\n",Purple],Style["eTodx",Bold],
-	"  Rule to chage basis from ",PrintIndex["e",{"a"}]," to ",PrintIndex["dx",{"\[Mu]"}],"\n",
-	Style["dxToe",Bold],"  Rule to chage basis from ",PrintIndex["dx",{"\[Mu]"}]," to ",PrintIndex["e",{"a"}],"\n",
-	Style["eamuUd",Bold],"  Vielbein matrix ",PrintIndex["e",{"a",-"\[Mu]"}],"\n",
-	Style["eamudU",Bold],"  Inverse vielbein matrix ",PrintIndex["e",{-"a","\[Mu]"}]," s.t. ",
-	PrintIndex["e",{"a",-"\[Mu]"}],PrintIndex["e",{-"a","\[Nu]"}]," = ",PrintIndex["\[Delta]",{"\[Nu]",-"\[Mu]"}]," and ",
-	PrintIndex["e",{"a",-"\[Mu]"}],PrintIndex["e",{-"b","\[Mu]"}]," = ",PrintIndex["\[Delta]",{"a",-"b"}]
-	,"\n",Style["\[Eta]dd",Bold],"  Flat metric ",PrintIndex["\[Eta]",{-"a",-"b"}],"\n",
-	Style["\[Eta]UU",Bold],"  Inverse flat metric ",PrintIndex["\[Eta]",{"a","b"}]
-	,"\n",Style["gdd",Bold],"  ",PrintIndex["g",{-"\[Mu]",-"\[Nu]"}]," = ",PrintIndex["\[Eta]",{-"a",-"b"}],
-	PrintIndex["e",{"a",-"\[Mu]"}],PrintIndex["e",{"b",-"\[Nu]"}],"\n",Style["gUU",Bold],"  ",PrintIndex["g",{"\[Mu]","\[Nu]"}]," = ",
-	PrintIndex["\[Eta]",{"a","b"}],PrintIndex["e",{-"a","\[Mu]"}],PrintIndex["e",{-"b","\[Nu]"}]
-	]
-];
-
-ComputeSpinConnection[eIN_,flatmetric_,simp_:PaiSimplify]:=
-Module[{secondterm\[Omega],GUdd},
-	SetVielbein[eIN,flatmetric];
-	If[
-	Dimensions[gdd]!={Dim,Dim},
-		Return[Print[Style["Metric ",Red,14],Style["gdd ",Bold,Red,14],Style["not defined\n",Red,14]," The program requieres a global variabled ",
-		Style["gdd ",Bold],"being an square array filled by the component of the metric tensor ",PrintIndex["g",{-"\[Mu]",-"\[Nu]"}]]];
-	];
-	ComputeChrisUdd[simp];
-	ClearAll[\[Omega]Ud];ClearAll[\[Omega]dd];
-	secondterm\[Omega] = Activate@TensorContract[Inactive[TensorProduct][d[eamuUd],eamudU],{{2,4}}]/.dxToe;
-	GUdd = Activate@TensorContract[Inactive[TensorProduct][ChrisUdd,eamuUd,eamudU,eamudU],{{1,5},{2,7},{3,9}}];
-	\[Omega]Ud = Activate@TensorContract[Inactive[TensorProduct][GUdd,eBasis],{{2,4}}]-secondterm\[Omega];
-	\[Omega]dd = Activate@TensorContract[Inactive[TensorProduct][\[Eta]dd,\[Omega]Ud],{{2,3}}];
-	Print[
-		Style["\[Omega]Ud",Bold],"  Spin connection 1-form ",PrintIndex["\[Omega]",{"a",-"b"}]," = ",PrintIndex["\[Omega]",{-"c","a",-"b"}],PrintIndex["e",{"c"}],"\n",
-		Style["\[Omega]dd",Bold],"  ",PrintIndex["\[Omega]",{-"a",-"b"}]," = ",PrintIndex["\[Eta]",{-"a",-"c"}],PrintIndex["\[Omega]",{"c",-"b"}]
-	];
-];
-(*====== Build Print definition of the objects ======*)
-
-PrintIndex[g_,index_]:=Module[{auxobject},
-auxobject=g;
-Do[If[Head[index[[II]]]===Times,auxobject=Subscript[auxobject,(-1)*index[[II]]],auxobject=Superscript[auxobject,index[[II]]]],{II,Length@index}];
-Return[auxobject]
-]
-
-PrintIndices[g_,listdnup_,index_]:=Module[{auxobject},
-auxobject=g;
-Do[If[listdnup[[II]]===dn,auxobject=Subscript[auxobject,index[[II]]],auxobject=Superscript[auxobject,index[[II]]]],{II,Length@index}];
-Return[auxobject]
-]
 	
 (*==========================================================================================================================================*)
 
@@ -823,17 +901,53 @@ Return[auxobject]
 
 TensorProductContract[Tensors__, contractIndices_List] := Activate@TensorContract[Inactive[TensorProduct][Tensors], contractIndices];
 
-RaiseIndices[TensorSparsedown_, bundle_, indicesRaisePosition_] := 
-	Module[{gUU, RaisePositions, rank, RaiseRelations, metricSequence, TensorUpPermuted, indexPermutation},
-		RaisePositions = Sort[indicesRaisePosition];
-		rank = Length[Dimensions[TensorSparsedown]];
-		RaiseRelations = Table[{RaisePositions[[n]], rank + 2*n-1}, {n, 1, Length[RaisePositions]}];
-		gUU = SparseArray[GetTensorArray[bundle, "gUU"]];
-		metricSequence = Sequence @@ ConstantArray[gUU, Length[RaisePositions]];
-		TensorUpPermuted = TensorProductContract[TensorSparsedown, metricSequence,RaiseRelations];
-		indexPermutation = Join[Complement[Range[rank], RaisePositions], RaisePositions];
-		Return[Transpose[TensorUpPermuted, indexPermutation]];
-	];
+TensorProductContract[tensor_, contractIndices_List] := TensorContract[tensor, contractIndices];
+
+SetAttributes[ApplyIndexChange, HoldRest];
+SetAttributes[MatrixForIndexChange, HoldFirst];
+
+MoveIndicesWithMatrix[tensor_, metric_, positions_] := Module[
+    {sortedPositions, rank, relations, metricSequence,
+     contracted, permutation},
+
+    sortedPositions = Sort[positions];
+    rank = Length[Dimensions[tensor]];
+
+    relations = Table[
+                    {sortedPositions[[n]], rank + 2 n - 1}
+                , {n, Length[sortedPositions]}
+                ];
+
+    metricSequence = Sequence @@ ConstantArray[SparseArray[metric], Length[sortedPositions]];
+
+    contracted = TensorProductContract[tensor, metricSequence, relations];
+
+    permutation = Join[
+        Complement[Range[rank], sortedPositions],
+        sortedPositions
+    ];
+
+    Transpose[contracted, permutation]
+];
+
+MatrixForIndexChange[bundle_, {"dn", "up"}] := GetTensorArray[bundle, "gUU"];
+MatrixForIndexChange[bundle_, {"up", "dn"}] := GetTensorArray[bundle, "gdd"];
+MatrixForIndexChange[bundle_, {"vdn", "vup"}] := Inverse[GetFlatMetric[bundle]];
+MatrixForIndexChange[bundle_, {"vup", "vdn"}] := GetFlatMetric[bundle];
+
+MatrixForIndexChange[bundle_, {"vdn", "dn"}] := GetTensorArray[bundle, "eamuUd"];
+MatrixForIndexChange[bundle_, {"dn", "vdn"}] := Transpose[GetTensorArray[bundle, "eamudU"]];
+MatrixForIndexChange[bundle_, {"up", "vup"}] := Transpose[GetTensorArray[bundle,"eamuUd"]];
+MatrixForIndexChange[bundle_, {"vup", "up"}] := GetTensorArray[bundle, "eamudU"];
+
+ApplyIndexChange[tensor_, bundle_, change_, positions_] := MoveIndicesWithMatrix[tensor, MatrixForIndexChange[bundle, change], positions];
+
+SetAttributes[RaiseIndices, HoldRest];
+SetAttributes[LowerIndices, HoldRest];
+
+RaiseIndices[tensor_, bundle_, positions_] := ApplyIndexChange[tensor, bundle, {"dn", "up"}, positions];
+
+LowerIndices[tensor_, bundle_, positions_] := ApplyIndexChange[tensor, bundle, {"up", "dn"}, positions];
 
 (*
 				---- Covariant derivative ----
@@ -879,6 +993,13 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 	{PaiTensor, TensorComponents, Dim, TensorArray, DimensionsTensor,
 	sector, name, level},
 
+    If[MemberQ[{"eamuUd", "eamudU"}, tensorName],
+        If[!KeyExistsQ[bundle, tensorName],
+            PaiComputeBundleTensors[bundle, "basicTools", simp]
+        ];
+        Return[bundle[tensorName]]
+    ];
+
 	Dim = Length[bundle["coord"]];
 
 	{sector, name, level} = Switch[tensorName,
@@ -902,10 +1023,12 @@ GetTensorArray[bundle_, tensorName_, simp_:Automatic] := Module[
 
 			KeyExistsQ[Lookup[bundle, "FlatTensors", <||>], "RicciScalar"],
 				{"FlatTensors", "RicciScalar", "RicciScalar"},
-			KeyExistsQ[bundle, "ds2"],
-				{"Tensors", "RicciScalar", "RicciScalar"},
-			KeyExistsQ[bundle, "eU"],
-				{"FlatTensors", "RicciScalar", "RicciScalar"}
+
+			VielbeinBundleQ[bundle],
+				{"FlatTensors", "RicciScalar", "RicciScalar"},
+
+            KeyExistsQ[bundle, "ds2"],
+                {"Tensors", "RicciScalar", "RicciScalar"}
 			],
 		_,
 			{"Tensors", tensorName, tensorName}
@@ -1156,28 +1279,29 @@ PaiComputeRicciScalar[bundle_Association] :=
 			------------------------------------
 *)
 
+SetAttributes[VielbeinBundleQ, HoldFirst];
+
+Clear[VielbeinBundleQ];
+
+VielbeinBundleQ[bundle_] := KeyExistsQ[bundle, "eU"];
+
 Clear[PaiComputeBundleTensors];
 
 SetAttributes[PaiComputeBundleTensors, HoldFirst];
 
-PaiComputeBundleTensors[bundle_, "levels"] := Which[
-    KeyExistsQ[bundle, "ds2"],
-        {"metric", "metricTools", "ChrisUdd", "Rdddd", "Rdd", "RicciScalar"},
-    KeyExistsQ[bundle, "eU"],
-        {"basic", "spinConnection", "curvatureForm", "Rdddd", "Rdd", "RicciScalar"}
-];
-
 PaiComputeBundleTensors[bundleIN_, level_: "RicciScalar", simp_:Automatic] := Module[
 	{}, 
-	Which[
-	KeyExistsQ[bundleIN, "ds2"],
-		PaiComputeBundleTensorsMetric[bundleIN, level, simp],
-	KeyExistsQ[bundleIN, "eU"],
-		PaiComputeBundleTensorsVielbein[bundleIN, level, simp],
-	True,
-		Print["[ Aborting ] neither ds2 nor eU was provided"];
-		Abort[];
-	];
+    Which[
+        VielbeinBundleQ[bundleIN],
+            PaiComputeBundleTensorsVielbein[bundleIN, level, simp],
+
+        KeyExistsQ[bundleIN, "ds2"],
+            PaiComputeBundleTensorsMetric[bundleIN, level, simp],
+
+        True,
+            Print["[ Aborting ] neither ds2 nor eU was provided"];
+            Abort[]
+    ]
 ];
 
 ClearAll[PaiComputeBundleTensorsVielbein];
@@ -1202,11 +1326,11 @@ PaiComputeBundleTensorsVielbein[bundleIN_, level_: "RicciScalar", simp_:PaiSimpl
 			simpRicci = simp;
 			simpR     = simp
 	];
-	Print["** Constructing bundle Tools: Hstar, FormSquare, FormSquaredd"];
+	Print["** Constructing bundle Tools: Hstar, FormSquare, FormSquaredd, Contraction"];
 	Print[AbsoluteTiming[InitVielbeinBundle[bundleIN, simpVielbein];]];
 	bundle=bundleIN;
 
-	If[level === "basic", Return[]];
+	If[level === "basicTools", Return[]];
 
 	Forms = Lookup[bundle,"Forms", <| |>];
 	needSpinConnection   = Not[KeyExistsQ[Forms, "omegadd"]];
@@ -1263,6 +1387,8 @@ PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Mo
 	AChrisUdd, ARiemdddd, bundle, ARicdd,needRicci, needRicciScalar, RicciScalar,
 	simpMetric, simpChris, simpRiem, simpRicci, simpR},
 
+    ValidateMetricBundle[bundleIN];
+
 	If[simp === Automatic,
 		simpMetric = PaiSimplify;
 		simpChris  = PaiSimplify;
@@ -1303,11 +1429,11 @@ PaiComputeBundleTensorsMetric[bundleIN_, level_: "Rdddd", simp_:Automatic] := Mo
 
 	(* --- Metric bundle tools --- *)
 	If[needMetricTools,
-		Print["** Computing metricTools : Hstar, FormSquare, FormSquaredd"];
+		Print["** Computing basicTools : Hstar, FormSquare, FormSquaredd, Contraction"];
 		InitMetricTools[bundle, simpMetric];
 	];
 
-	If[level === "metricTools", 
+	If[level === "basicTools", 
 		bundleIN = bundle;
 		Return[]
 	];
@@ -1380,10 +1506,13 @@ Clear[BuildHodge];
 SetAttributes[BuildHodge, HoldFirst];
 BuildHodge[bundle_, simp_:PaiSimplify] := Module[{},
 	Which[
-	KeyExistsQ[bundle, "ds2"],
-		Return[BuildHodgeMetric[bundle, simp]],
-	KeyExistsQ[bundle, "eU"],
-		Return[BuildHodgeVielbein[bundle, simp]],
+
+    VielbeinBundleQ[bundle],
+        Return[BuildHodgeVielbein[bundle, simp]],
+
+    KeyExistsQ[bundle, "ds2"],
+        Return[BuildHodgeMetric[bundle, simp]],
+
 	True,
 		Print["[ Aborting ] BuildHodge: ds2 or eU are not given."];
 	];
@@ -1408,7 +1537,7 @@ BuildHodgeMetric[bundle_, simp_:PaiSimplify] :=
 					sqrtdetg = Simplify[sqrtdetg]
 		];
 		Return[Function[{X}, 
-			Hstar[X, gUU, sqrtdetg, d[coord], simp]
+			HstarCore[X, gUU, sqrtdetg, d[coord], simp]
 			]];
 	];
 
@@ -1418,7 +1547,7 @@ BuildHodgeVielbein[bundle_, simp_:PaiSimplify] := Module[{basis, eta, etainv, sq
 	etainv = Inverse[eta];
 	sqrtdeteta = Sqrt[-Det[eta]];
 	Return[Function[{X}, 
-			Hstar[X /. bundle["dxToe"], etainv, sqrtdeteta, basis, simp]
+			HstarCore[X /. bundle["dxToe"], etainv, sqrtdeteta, basis, simp]
 			]];
 
 
@@ -1438,29 +1567,140 @@ ConstructContraction[vielbeinBundle_] := Module[
 	Return[Function[{X}, Contraction[X]]]
 	];
 
+Clear[ValidateVielbeinBundle];
+
+SetAttributes[ValidateVielbeinBundle, HoldFirst];
+
+ValidateVielbeinBundle[bundle_] := Module[
+    {coord, basis, eU, allowedDiffs, diffs, invalid, lambda, scaled, homogen},
+
+    If[
+        !And[
+            KeyExistsQ[bundle, "coord"],
+            KeyExistsQ[bundle, "basis"],
+            KeyExistsQ[bundle, "eU"]
+        ],
+        Print[
+            "[ Aborting ] Vielbein bundle requires keys ",
+            "\"coord\", \"basis\" and \"eU\""
+        ];
+        Abort[]
+    ];
+
+    coord = bundle["coord"];
+    basis = bundle["basis"];
+    eU = bundle["eU"];
+
+    If[Length[eU] =!= Length[coord] || Length[basis] =!= Length[coord],
+        Print[
+            "[ Aborting ] Vielbein dimension mismatch",
+            "\nLength[coord]: ", Length[coord],
+            "\nLength[basis]: ", Length[basis],
+            "\nLength[eU]: ", Length[eU]
+        ];
+        Abort[]
+    ];
+
+    allowedDiffs = d[coord];
+    diffs = DeleteDuplicates[Cases[eU, _d, Infinity]];
+    invalid = Complement[diffs, allowedDiffs];
+
+    If[invalid =!= {},
+        Print[
+            "[ Aborting ] Unexpected coordinate differentials in eU: ",
+            invalid
+        ];
+        Abort[]
+    ];
+
+    scaled = eU /. d[_] :> lambda;
+
+    homogen = !AllTrue[scaled, (Exponent[#, lambda, Min] === 1 && Exponent[#, lambda, Max] === 1)&];
+
+    If[homogen,
+        Print[
+            "[ Aborting ] Each vielbein must be linear in d[coord]"
+        ];
+        Abort[]
+    ];
+
+    If[!KeyExistsQ[bundle, "eta"] && !KeyExistsQ[bundle, "signature"],
+            Print[
+            "** [ Observation ] No \"eta\" metric or flat signature provided. ",
+            "Using mostly-plus signature (-,+,...,+)"
+            ];  
+    ];
+
+    True
+];
+
 SetAttributes[InitVielbeinBundle, HoldFirst];
 
-InitVielbeinBundle[vielbeinBundle_, simp_:PaiSimplify] := Module[
+InitVielbeinBundle[bundle_, simp_:PaiSimplify] := Module[
 	{eTodx, dxToe, symbs, eU, contraction, coordbasis, hstar,
-	deU, dictde, FormSquareTools},
-	vielbeinBundle = Association[vielbeinBundle];
-	symbs = vielbeinBundle["basis"];
-	eU = vielbeinBundle["eU"];
-	coordbasis = d[vielbeinBundle["coord"]];
-	Do[FormDegree[eIter] = 1, {eIter, symbs}];
-	eTodx = Normal[AssociationThread[symbs -> eU]];
-	dxToe = Solve[eU == symbs, coordbasis][[1]];
-	contraction = ConstructContraction[vielbeinBundle];
+	deU, dictde, FormSquareTools, aIter, muIter, eta,
+    etaUU, gdd, gUU, Agdd, AgUU, eamuUd, eamudU, buildSymmetric2, Tensors},
 
-	deU = d[symbs] /. eTodx /. dxToe;
-	dictde = AssociationThread[d[symbs], deU];
+	bundle = Association[bundle];
+
+    ValidateVielbeinBundle[bundle];
+
+	symbs = bundle["basis"];
+	eU = bundle["eU"];
+	coordbasis = d[bundle["coord"]];
+	Do[FormDegree[eIter] = 1, {eIter, symbs}];
+
+	eTodx = Normal[AssociationThread[symbs -> eU]];
+
+    dxToe = Quiet[
+        Check[Solve[eU == symbs, coordbasis][[1]],
+            Print["[ Aborting ] Could not construct dxToe"];
+            Abort[]
+        ]
+    ];
+
+	contraction = ConstructContraction[bundle];
+
+    eamuUd = Table[
+        Coefficient[eU[[aIter]], coordbasis[[muIter]]],
+        {aIter, Length[symbs]},
+        {muIter, Length[coordbasis]}
+    ];
+
+    eamudU = Transpose[Inverse[eamuUd]];
+
+    eta = GetFlatMetric[bundle];
+    etaUU = Inverse[eta];
+
+    gdd = Transpose[eamuUd] . eta . eamuUd;
+    gUU = Transpose[eamudU] . etaUU . eamudU;
+
+    buildSymmetric2[X_] := Association[Table[{iIter, jIter} -> X[[iIter, jIter]], {iIter, Length[coordbasis]}, {jIter, iIter, Length[coordbasis]}]];
+
+    Agdd = CleanZeros @ Map[simp, buildSymmetric2[gdd]];
+    AgUU = CleanZeros @ Map[simp, buildSymmetric2[gUU]];
+
+    Tensors = Lookup[bundle, "Tensors", <||>];
+
+    Tensors = Join[Tensors, <|"gdd" -> Agdd, "gUU" -> AgUU|>];
+
+	deU = d[eU] /. dxToe;
+    dictde = AssociationThread[d[symbs], deU];
 	Do[d[eIter] = Collect[dictde[d[eIter]], _Wedge, simp],{eIter, symbs}];
-	AssociateTo[vielbeinBundle, {"eTodx" -> eTodx, "dxToe" -> dxToe, "contraction"->contraction, "UseVielbein" -> True}];
-	hstar = BuildHodge[vielbeinBundle, simp];
-	vielbeinBundle["Hstar"] = hstar;
-	FormSquareTools = BuildSquaresTools[vielbeinBundle, simp];
-	vielbeinBundle["FormSquare"] = FormSquareTools["FormSquare"];
-	vielbeinBundle["FormSquaredd"] = FormSquareTools["FormSquaredd"];
+	AssociateTo[bundle, {
+        "eTodx" -> eTodx,
+        "dxToe" -> dxToe,
+        "eamuUd" -> eamuUd,
+        "eamudU" -> eamudU,
+        "contraction"->contraction,
+        "UseVielbein" -> True,
+        "Tensors" -> Tensors
+    }];
+	hstar = BuildHodge[bundle, simp];
+	bundle["Hstar"] = hstar;
+	FormSquareTools = BuildSquaresTools[bundle, simp];
+	bundle["FormSquare"] = FormSquareTools["FormSquare"];
+	bundle["FormSquaredd"] = FormSquareTools["FormSquaredd"];
 
 	];
 
@@ -1471,6 +1711,8 @@ InitMetricTools[bundle_, simp_:PaiSimplify] := Module[{ToClear, FormSquareTools}
 	If[KeyExistsQ[bundle, "constants"],
     	Do[d[cIter]=0, {cIter, bundle["constants"]}];
 	];
+    bundle["basis"] = d[bundle["coord"]];
+    bundle["contraction"] = ConstructContraction[bundle];
     bundle["Hstar"] = BuildHodge[bundle, simp];
     FormSquareTools = BuildSquaresTools[bundle, simp];
     bundle["FormSquare"] = FormSquareTools["FormSquare"];
@@ -1486,10 +1728,17 @@ PaiComponent2anti[X_Association, {i_, j_}] := Which[
 		0
 ];
 
-GetFlatMetric[bundle_] := If[
+GetFlatMetric[bundle_] := Which[
     KeyExistsQ[bundle, "eta"],
-    	bundle["eta"],
-    		DiagonalMatrix[bundle["signature"]]
+        bundle["eta"],
+
+    KeyExistsQ[bundle, "signature"],
+        DiagonalMatrix[bundle["signature"]],
+
+    True,
+        DiagonalMatrix[
+            Join[{-1}, ConstantArray[1, Length[bundle["basis"]] - 1]]
+        ]
 ];
 
 Clear[PaiComputeSpinConnection];
@@ -1693,6 +1942,1138 @@ PaiComputeRicciScalarFlat[frameBundle_, simp_:PaiSimplify] := Module[
 		frameBundle,
 		"FlatTensors" -> FlatTensors
 	];
+];
+
+(* ========================================================== *)
+
+(*                  PaiTensor / GRTensor layer                *)
+
+(* ========================================================== *)
+
+Clear[TensorSignIndices, TensorSignDerivatives, TensorSignRank,
+    TensorSignDerivativeOrder, TensorSignAllIndices];
+
+TensorSignIndices[sign_] := sign[[2]];
+
+TensorSignDerivatives[sign_] := sign[[3]];
+
+TensorSignRank[sign_] := Length[TensorSignIndices[sign]];
+
+TensorSignDerivativeOrder[sign_] := Length[TensorSignDerivatives[sign]];
+
+TensorSignAllIndices[sign_] := Join[TensorSignDerivatives[sign],
+    TensorSignIndices[sign]];
+
+TensorSignHead[sign_] := sign[[1]];
+
+MakeTensorSign[head_, indices_, derivatives_] := {head, indices, derivatives};
+
+Clear[InitComputedTensors];
+
+$ComputedTensors = <||>;
+
+SetAttributes[InitComputedTensors, HoldFirst];
+
+InitComputedTensors[bundle_] := Module[
+	{id},
+	
+
+	If[KeyExistsQ[bundle, "id"],
+        id = bundle["id"],
+            id = CreateUUID["PaiBundle-"];
+            AssociateTo[bundle, "id" -> id]
+	];
+
+    If[Not[KeyExistsQ[$ComputedTensors, id]],
+        AssociateTo[$ComputedTensors, id -> <| |>]
+    ];
+
+    If[Not[KeyExistsQ[$DefTensors, id]],
+        AssociateTo[$DefTensors, id -> <| |>]
+    ];
+
+    id
+];
+
+NativeTensorSources[bundle_] := If[
+    VielbeinBundleQ[bundle],
+
+    <|
+        MakeTensorSign["g", {"dn", "dn"}, {}] -> "gdd",
+        MakeTensorSign["g", {"up", "up"}, {}] -> "gUU",
+        MakeTensorSign["R", {"vdn", "vdn"}, {}] -> "Rflatdd",
+        MakeTensorSign["R", {"vdn", "vdn", "vdn", "vdn"}, {}] -> "Rflatdddd",
+        MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar",
+        MakeTensorSign["Rform", {"vdn", "vdn"}, {}] -> "Rformdd",
+        MakeTensorSign["omega", {"vdn", "vdn"}, {}] -> "omegadd"
+    |>,
+
+    <|
+        MakeTensorSign["g", {"dn", "dn"}, {}] -> "gdd",
+        MakeTensorSign["g", {"up", "up"}, {}] -> "gUU",
+        MakeTensorSign["Chris", {"up", "dn", "dn"}, {}] -> "ChrisUdd",
+        MakeTensorSign["R", {"dn", "dn"}, {}] -> "Rdd",
+        MakeTensorSign["R", {"dn", "dn", "dn", "dn"}, {}] -> "Rdddd",
+        MakeTensorSign["Ricciscalar", {}, {}] -> "RicciScalar"
+    |>
+];
+Clear[ComputeNativeTensorSeed];
+SetAttributes[ComputeNativeTensorSeed, HoldRest]
+
+ComputeNativeTensorSeed[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
+    {candidates, best, nativeSign, tensorName},
+
+    candidates = KeySelect[
+        NativeTensorSources[bundle],
+        AcceptableSeedTensorQ[tensorSign]
+    ];
+
+    If[candidates === <||>,
+        Return[False]
+    ];
+
+    best = FindMostSimilarTensor[candidates, tensorSign];
+
+    nativeSign = First[Keys[best]];
+    tensorName = First[Values[best]];
+
+    StoreComputedTensor[
+        bundle,
+        nativeSign,
+        GetTensorArray[bundle, tensorName, simp],
+        simp
+    ];
+
+    True
+];
+
+Clear[StoreComputedTensor];
+
+StoreComputedTensor[bundle_, tensorSign_, tensor_, simp_:PaiSimplify] := Module[{id},
+	id = bundle["id"];
+	$ComputedTensors[id] = Append[
+		$ComputedTensors[id],
+		tensorSign -> simp[tensor]
+	];
+]
+
+ClearAll[ParseIndex, TensorIndices];
+
+ParseIndex[s_String] :=
+    If[
+        StringStartsQ[s, "^"],
+        {StringDrop[s, 1], "up"},
+        {s, "dn"}
+    ];
+
+TensorIndices[tensor_String] := Module[
+    {inside, pieces, tensorIndices, derivativeIndices},
+
+    If[Not[StringContainsQ[tensor, "{"]],
+        Return[{}]
+    ];
+
+    inside = First@StringCases[tensor, "{" ~~ x___ ~~ "}" :> x];
+    pieces = StringSplit[inside, ";"];
+    tensorIndices = Map[ParseIndex, StringSplit[First[pieces]]];
+
+    derivativeIndices =
+        Map[
+            ParseIndex,
+            Flatten@Map[StringSplit, Rest[pieces]]
+        ];
+
+    Join[Reverse[derivativeIndices], tensorIndices]
+];
+
+ClearAll[IndexStructure, ReadTensorSignature];
+
+IndexStructure[s_String] :=
+    Map[
+        If[StringStartsQ[#, "^"], "up", "dn"] &,
+        StringSplit[StringTrim[s]]
+    ];
+
+ReadTensorSignature[tensor_String] := Module[
+    {head, inside, posCD, tensorPart, derivativePart},
+
+    If[Not[StringContainsQ[tensor, "{"]],
+        Return[MakeTensorSign[StringTrim[tensor], {}, {}]]
+    ];
+
+    head = StringTrim[First[StringSplit[tensor, "{"]]];
+
+    inside = First[StringCases[tensor, "{" ~~ x___ ~~ "}" :> x]];
+
+    posCD = StringPosition[inside, ";"];
+
+    If[posCD === {},
+        tensorPart = inside;
+        derivativePart = "",
+            tensorPart = StringTake[inside, posCD[[1, 1]] - 1];
+            derivativePart = StringDrop[inside, posCD[[1, 1]]]
+    ];
+
+    MakeTensorSign[head,
+    IndexStructure[tensorPart],
+    Reverse[IndexStructure[StringReplace[derivativePart, ";" -> " "]]]
+    ]
+];
+
+
+Clear[PaiDef, $DefTensors];
+$DefTensors=<| "shared" -> <| |> |>;
+
+
+SetAttributes[PaiDef, HoldFirst];
+
+DefineStringTensor[storage_, tensorDef_String] := Module[
+	{splitDef, tensor, def, TensorSign, previous},
+	splitDef = StringSplit[tensorDef, ":="];
+	tensor = StringTrim[splitDef[[1]]];
+	def = StringTrim[splitDef[[2]]];
+    TensorSign = ReadTensorSignature[tensor];
+
+    previous = Select[
+        Keys[$DefTensors[storage]], 
+            TensorSignHead[#] === TensorSignHead[TensorSign] &&
+            TensorSignRank[#] === TensorSignRank[TensorSign] &
+    ];
+
+    If[
+        previous =!= {},
+        Print[
+            "[ Aborting ] Tensor < ",
+            TensorSignHead[TensorSign],
+            " > with rank ",
+            TensorSignRank[TensorSign],
+            " is already defined"
+        ];
+        Abort[]
+    ];
+
+	AssociateTo[$DefTensors[storage], TensorSign -><|tensor->def|>];
+    Print["** Definition created ", TensorSignToString[TensorSign], " in "<>
+        If[storage === "shared",
+            "shared definitions",
+                "local bundle"
+        ]
+    ];
+];
+
+
+
+PaiDef[tensorDef_String] := DefineStringTensor["shared", tensorDef];
+
+PaiDef[bundle_][tensorDef_String] := Module[
+    {id},
+    id = InitComputedTensors[bundle];
+    DefineStringTensor[id, tensorDef]
+];
+
+
+PaiObjectToArray[bundle_, tensorSign_, object_] := Module[
+    {rank, indices},
+
+    rank = TensorSignRank[tensorSign];
+    indices = TensorSignIndices[tensorSign];
+
+    Which[
+        ListQ[object] && ArrayDepth[object] === rank,
+            Print["** Recognized object as Array"];
+            object,
+
+        rank === 0 && Not[ListQ[object]],
+            Print["** Recognized object as scalar"];
+            object,
+
+        rank === 2 && DeleteDuplicates[indices]==={"dn"} && MetricQuadraticInDiffQ[object] && FormDegree[object]===0,
+            Print["** Recognized object as quadratic form"];
+            DiffToMatrix[object, bundle["coord"]],
+
+        FormDegree[object] === rank && DeleteDuplicates[indices]==={"dn"},
+            Print["** Recognized object as ",rank, "-form"];
+            FormToMatrix[object, rank, bundle["coord"]],
+
+        True,
+            Print[
+                "[ Aborting ] Could not interpret object as tensor ",
+                TensorSignToString[tensorSign]
+            ];
+            Abort[]
+    ]
+];
+
+PaiDef[bundle_][tensor_String, object_] := Module[
+    {tensorSign, rank, Dim, expectedDimensions, tensorArray},
+
+    InitComputedTensors[bundle];
+
+    tensorSign = TensorStringToSign[tensor];
+
+    Dim = Length[bundle["coord"]];
+    rank = TensorSignRank[tensorSign];
+    expectedDimensions = ConstantArray[Dim, rank];
+
+    tensorArray = PaiObjectToArray[bundle, tensorSign, object];
+
+    If[rank>0 && ListQ[tensorArray] && (Dimensions[tensorArray] =!= expectedDimensions),
+        Print[
+            "[ Aborting ] Tensor ", tensor,
+            " has dimensions ", Dimensions[tensorArray],
+            ", expected ", expectedDimensions
+        ];
+        Abort[]
+    ];
+
+    StoreComputedTensor[bundle, tensorSign, tensorArray];
+
+    Print["** Tensor registered ", TensorSignToString[tensorSign]];
+];
+
+PaiDef[tensor_String, tensorArray_] := Module[{},
+    InitGlobalBundle[];
+    PaiDef[globalBundle][tensor, tensorArray]
+    ];
+
+$IndexDistanceGraph = Graph[
+    {
+        Property["vdn" -> "vup", EdgeWeight -> 1],
+        Property["vup" -> "vdn", EdgeWeight -> 1],
+
+        Property["dn" -> "up", EdgeWeight -> 2],
+        Property["up" -> "dn", EdgeWeight -> 2],
+
+        Property["dn" -> "vdn", EdgeWeight -> 3],
+        Property["vdn" -> "dn", EdgeWeight -> 3],
+
+        Property["up" -> "vup", EdgeWeight -> 3],
+        Property["vup" -> "up", EdgeWeight -> 3]
+    }
+];
+
+IndexDistance[from_, to_] := GraphDistance[$IndexDistanceGraph, from, to];
+
+FindIndexPath[from_, to_] := FindShortestPath[$IndexDistanceGraph, from, to];
+
+TruncateTargetIndices[candidate_, target_] := Module[
+    {nDerOrder},
+    nDerOrder = TensorSignDerivativeOrder[candidate];
+    Join[
+        Take[TensorSignDerivatives[target], -nDerOrder],
+        TensorSignIndices[target]
+    ]
+];
+
+FindTensorSignPath[candidate_, target_] := Module[{},
+    MapThread[
+        FindIndexPath,
+        {TensorSignAllIndices[candidate], TruncateTargetIndices[candidate, target]}
+    ]
+];
+
+TensorSignDistance[candidate_, target_] := Module[{},
+    Total[
+        MapThread[
+            IndexDistance,
+            {TensorSignAllIndices[candidate], TruncateTargetIndices[candidate, target]}
+        ]
+    ]
+];
+
+Clear[FindMostSimilarTensor];
+FindMostSimilarTensor[closests_Association, tensorSign_List] := Module[
+    {signs, bestSign},
+
+    signs = Keys[closests];
+    bestSign = First[MinimalBy[signs, TensorSignDistance[#, tensorSign]& ]];
+
+    KeyTake[closests, {bestSign}]
+];
+
+CurrentIndexChangeBatch[paths_] := Module[
+    {indexedChanges},
+
+    indexedChanges = MapIndexed[
+        Function[{path, position},
+            If[
+                Length[path] > 1,
+                {Take[path, 2], First[position]},
+                Nothing
+            ]
+        ],
+        paths
+    ];
+
+    GroupBy[indexedChanges, First -> Last]
+];
+
+NextIndexPaths[paths_] := Map[If[Length[#] > 1, Rest[#], #] &, paths];
+
+SetAttributes[FollowTensorSignPaths, HoldRest];
+
+FollowTensorSignPaths[tensor_, bundle_, paths_] := Module[
+    {result, remaining, batch},
+
+    result = tensor;
+    remaining = paths;
+
+    While[AnyTrue[remaining, Length[#] > 1 &],
+
+        batch = CurrentIndexChangeBatch[remaining];
+
+        KeyValueMap[
+            (result = ApplyIndexChange[result, bundle, #1, #2]) &,
+            batch
+        ];
+
+        remaining = NextIndexPaths[remaining];
+    ];
+
+    result
+];
+
+Clear[ComputeCovDTensor];
+SetAttributes[ComputeCovDTensor, HoldRest];
+ComputeCovDTensor[best_, bundle_, simp_:PaiSimplify] := Module[
+	{bestSign, bestSparse, bestIndCD, sparseCD, newSign},
+
+    bestSign = Keys[best][[1]];
+    bestSparse = Values[best][[1]];
+    bestIndCD = StringJoin[TensorSignAllIndices[bestSign] /. {"up"->"U", "dn"-> "d"}];
+
+    newSign = MakeTensorSign[
+        TensorSignHead[bestSign],
+        TensorSignIndices[bestSign],
+        Prepend[TensorSignDerivatives[bestSign], "dn"]
+    ];
+
+	Print["** Computing ", TensorSignToString[bestSign]];
+
+	sparseCD = PaiCovD[bundle, bestSparse, bestIndCD];
+	
+	StoreComputedTensor[bundle, newSign, sparseCD, simp]
+];
+
+AcceptableSeedTensorQ[tensorSign_] := And[
+    TensorSignHead[#]===TensorSignHead[tensorSign],
+	TensorSignRank[#]===TensorSignRank[tensorSign],
+    TensorSignDerivativeOrder[#]<=TensorSignDerivativeOrder[tensorSign]
+]&;
+
+SetAttributes[ComputeSingleRequiredTensors, HoldRest]
+
+ComputeSingleRequiredTensors[tensorSign_, bundle_, simp_:PaiSimplify] := Module[
+    {usefullComputed, closestDerivatives, best, CompTensors,
+    defCandidates, defSign, storage},
+
+    CompTensors = $ComputedTensors[bundle["id"]];
+	usefullComputed = KeySelect[CompTensors, AcceptableSeedTensorQ[tensorSign]];
+
+	If[usefullComputed === <||>,
+
+        If[ComputeNativeTensorSeed[tensorSign, bundle, simp],
+            Return[ComputeSingleRequiredTensors[tensorSign, bundle, simp]]
+        ];
+
+        defCandidates = KeySelect[$DefTensors[bundle["id"]], AcceptableSeedTensorQ[tensorSign]];
+        storage = bundle["id"];
+
+        If[defCandidates ===<| |>,
+            defCandidates = KeySelect[$DefTensors["shared"], AcceptableSeedTensorQ[tensorSign]];
+            storage = "shared";
+        ];
+
+        If[defCandidates === <||>,
+            Print[
+                "[ Aborting ] Tensor ", TensorSignToString[tensorSign], " is neither computed nor defined"
+            ];
+            Abort[]
+        ];
+
+		If[Length[defCandidates] > 1,
+			Print[
+				"[ Aborting ] Multiple definitions can seed tensor ", tensorSign, ": ", Keys[defCandidates]
+			];
+			Abort[]
+		];
+
+		defSign = First[Keys[defCandidates]];
+
+		ComputeFreshTensor[defSign, storage, bundle, simp];
+
+		Return[ComputeSingleRequiredTensors[tensorSign, bundle, simp]];
+
+    ];
+
+	closestDerivatives = KeyTake[usefullComputed, MaximalBy[Keys[usefullComputed], TensorSignDerivativeOrder]
+    ];
+
+	best = FindMostSimilarTensor[closestDerivatives, tensorSign];
+    bestSign = First[Keys[best]];
+
+    If[
+        TensorSignDerivativeOrder[bestSign] ===
+            TensorSignDerivativeOrder[tensorSign],
+
+        If[bestSign === tensorSign,
+            Return[]
+        ];
+
+        sparse = First[Values[best]];
+
+        Print["** Computing ", TensorSignToString[tensorSign]];
+
+        sparse = FollowTensorSignPaths[
+            sparse,
+            bundle,
+            FindTensorSignPath[bestSign, tensorSign]
+        ];
+
+        StoreComputedTensor[
+            bundle,
+            tensorSign,
+            sparse,
+            simp
+        ];
+
+        Return[]
+    ];
+
+    ComputeCovDTensor[best, bundle, simp];
+
+    ComputeSingleRequiredTensors[tensorSign, bundle, simp]
+];
+
+Clear[ComputeRequiredTensors];
+
+SetAttributes[ComputeRequiredTensors, HoldRest];
+ComputeRequiredTensors[requiredTensors_, bundle_, simp_:PaiSimplify]:= Module[{},
+	If[Length[$ComputedTensors[bundle["id"]]] === 0,
+		InitComputedTensors[bundle]];
+	Do[
+	ComputeSingleRequiredTensors[tensor, bundle, simp]
+	, {tensor, requiredTensors}]
+];
+
+FindRequiredScalars[scalars_, bundle_] := Module[
+    {CompTensors, scalarSigns, namesInScalars},
+
+    CompTensors = $ComputedTensors[bundle["id"]];
+
+    scalarSigns = DeleteDuplicates @ Join[
+        Keys @ KeySelect[CompTensors, ScalarTensorQ],
+        Keys @ KeySelect[$DefTensors[bundle["id"]], ScalarTensorQ],
+        Keys @ KeySelect[$DefTensors["shared"], ScalarTensorQ],
+        Keys @ KeySelect[NativeTensorSources[bundle], ScalarTensorQ]
+    ];
+
+    namesInScalars =
+        DeleteDuplicates @ Flatten @
+            StringCases[
+                scalars,
+                RegularExpression["[A-Za-z$][A-Za-z0-9$]*"]
+            ];
+
+    Select[
+        scalarSigns,
+        MemberQ[namesInScalars, TensorSignHead[#]] &
+    ]
+];
+
+ScalarTensorQ[sign_] := TensorSignRank[sign] === 0 && TensorSignDerivativeOrder[sign] === 0;
+
+Clear[EvalScalarQuantities];
+EvalScalarQuantities[ComputedTensors_] := Normal[KeyMap[ToExpression[TensorSignHead[#]]&, KeySelect[ComputedTensors, ScalarTensorQ]]]
+
+Clear[PaiCompute];
+Clear[PaiCalc];
+
+SetAttributes[PaiCompute, HoldFirst];
+SetAttributes[PaiCalc, HoldFirst];
+PaiCalc[y___]:=PaiCompute[y];
+PaiCompute[bundle_][spec_String, simp_:PaiSimplify] := Module[
+    {tensorSign},
+    tensorSign = TensorStringToSign[spec];
+    InitComputedTensors[bundle];
+
+    If[
+        KeyExistsQ[$ComputedTensors[bundle["id"]], tensorSign],
+        Print["** Tensor ", spec, " already computed"];
+        Return[]
+    ];
+
+    ComputeSingleRequiredTensors[tensorSign, bundle, simp];
+];
+
+PaiCompute[spec_, simp_:PaiSimplify] /; StringQ[spec] := Module[
+    {},
+	InitGlobalBundle[];
+    PaiCompute[globalBundle][spec, simp];
+];
+
+Clear[Paillaco];
+SetAttributes[Paillaco, HoldFirst];
+
+Paillaco[bundle_][spec_String, simp_:PaiSimplify] := Module[{},
+    PaiCompute[bundle][spec, simp];
+    PaiComponents[bundle][spec]
+];
+
+Paillaco[spec_String, simp_:PaiSimplify] := Module[{},
+    PaiCompute[spec, simp];
+    PaiComponents[spec]
+];
+
+Clear[PaiComponents];
+SetAttributes[PaiComponents, HoldFirst];
+
+PaiComponents[bundle_][spec_String] := Module[
+    {tensorSign},
+
+    tensorSign = TensorStringToSign[spec];
+
+    If[
+        !KeyExistsQ[$ComputedTensors[bundle["id"]], tensorSign],
+        Print["[ Aborting ] Tensor ", spec, " has not been computed"];
+        Abort[]
+    ];
+
+    $ComputedTensors[bundle["id"]][tensorSign]
+];
+
+
+PaiComponents[spec_] /; StringQ[spec] := PaiComponents[globalBundle][spec];
+
+(*
+====================================================
+        Towards tree-like Compute tensors
+        generalization of Monomial computation
+====================================================
+
+    *)
+
+Clear[DecomposeDefinition];
+
+DecomposeDefinition[expr_String] := Module[
+    {str, terms, factors, division},
+
+    str = StripOuterParentheses[StringTrim[expr]];
+
+    If[
+        StringStartsQ[str, "+"],
+        str = StringTrim[StringDrop[str, 1]]
+    ];
+
+    If[
+        TensorLeafQ[str],
+        Return[str]
+    ];
+
+    terms = SplitTensorSum[str];
+
+    If[
+        Length[terms] > 1,
+        Return[
+            <|"plus" -> Map[DecomposeDefinition, terms]|>
+        ]
+    ];
+
+    factors = SplitTensorTimes[str];
+
+    If[
+        Length[factors] > 1,
+        Return[
+            <|"times" -> Map[DecomposeDefinition, factors]|>
+        ]
+    ];
+
+    division = SplitTensorDivide[str];
+
+    If[
+        Length[division] > 1,
+        Return[
+            <|
+                "divide" -> Map[DecomposeDefinition, division]
+            |>
+        ]
+    ];
+
+    str
+(*
+    Print["[ Aborting ] Could not decompose expression: ", str];
+    Abort[]*)
+]
+
+Clear[TopLevelOperatorPositions];
+
+TopLevelOperatorPositions[expr_String, ops_List] := Module[
+    {chars, par = 0, cur = 0, bra = 0, positions = {}, ch},
+
+    chars = Characters[expr];
+
+    Do[
+        ch = chars[[i]];
+
+        If[
+            par === 0 && cur === 0 && bra === 0 && MemberQ[ops, ch],
+                AppendTo[positions, i]
+        ];
+
+        Switch[ch,
+            "(", par++,
+            ")", par--,
+            "{", cur++,
+            "}", cur--,
+            "[", bra++,
+            "]", bra--
+        ],
+        {i, Length[chars]}
+    ];
+
+    positions
+];
+
+Clear[BinarySignQ];
+
+BinarySignQ[chars_, i_] := Module[
+    {prev, prevChars},
+	prevChars = Reverse[Take[chars, i - 1]];
+    prev = SelectFirst[prevChars, StringTrim[#] =!= "" &, None];
+    prev =!= None && Not@MemberQ[{"+", "-", "*", "/", "^", "(", "[", "{", ",", ";"}, prev]
+];
+
+Clear[SplitTensorSum];
+
+Clear[RemoveLeadingPlus];
+
+RemoveLeadingPlus[str_String] := If[
+    StringStartsQ[str, "+"],
+    StringTrim[StringDrop[str, 1]],
+    str
+];
+
+SplitTensorSum[expr_String] := Module[
+    {str, chars, signPositions, starts, ends, terms, ranges},
+
+    str = StringTrim[expr];
+    chars = Characters[str];
+
+    signPositions = Select[
+        TopLevelOperatorPositions[str, {"+", "-"}],
+        BinarySignQ[chars, #] &
+    ];
+
+    If[signPositions === {},
+        Return[{str}]
+    ];
+
+    starts = Join[{1}, signPositions];
+    ends = Join[signPositions - 1, {StringLength[str]}];
+    ranges = Transpose[{starts, ends}];
+
+	terms = Map[StringTake[str, #] &, ranges];
+    terms = Map[StringTrim, terms];
+
+    Map[RemoveLeadingPlus, terms]
+];
+
+Clear[SplitTensorTimes];
+
+SplitTensorTimes[expr_String] := Module[
+    {str, TimesPositions, starts, ends, ranges, terms},
+
+    str = StringTrim[expr];
+
+    TimesPositions = TopLevelOperatorPositions[str, {"*"}];
+
+    If[TimesPositions === {},
+        If[StringStartsQ[str, "-"] && str =!= "-1",
+            Return[
+                {"-1", StringTrim[StringDrop[str, 1]]}
+            ]
+        ];
+            Return[{str}]
+    ];
+
+    starts = Join[{1}, TimesPositions + 1];
+    ends = Join[TimesPositions - 1, {StringLength[str]}];
+    ranges = Transpose[{starts, ends}];
+	terms = Map[StringTake[str, #] &, ranges];
+    Map[StringTrim, terms];
+
+    terms
+];
+
+Clear[SplitTensorDivide];
+
+SplitTensorDivide[expr_String] := Module[
+    {positions, pos},
+
+    positions = TopLevelOperatorPositions[expr, {"/"}];
+
+    If[positions === {},
+        Return[{expr}]
+    ];
+
+    pos = Last[positions];
+
+    {
+        StringTrim[StringTake[expr, pos - 1]],
+        StringTrim[StringDrop[expr, pos]]
+    }
+];
+
+Clear[OuterParenthesizedQ];
+
+OuterParenthesizedQ[expr_String] := Module[
+    {str, chars, depth = 0, closesEarly = False},
+    str = StringTrim[expr];
+
+    If[StringLength[str] < 2 || StringTake[str, 1] =!= "(" || StringTake[str, -1] =!= ")",
+        Return[False]
+    ];
+
+    chars = Characters[str];
+
+    Do[
+        Switch[
+            chars[[i]],
+            "(", depth++,
+            ")", depth--
+        ];
+
+        If[depth === 0 && i < Length[chars],
+            closesEarly = True;
+            Break[]
+        ],
+    {i, Length[chars]}
+    ];
+
+    depth === 0 && !closesEarly
+];
+
+Clear[StripOuterParentheses];
+
+StripOuterParentheses[expr_String] := Module[
+    {str},
+
+    str = StringTrim[expr];
+
+    While[
+        OuterParenthesizedQ[str],
+        str = StringTrim[StringTake[str, {2, -2}]]
+    ];
+
+    str
+];
+
+Clear[TensorLeafQ];
+
+TensorLeafQ[s_String] := Module[
+    {str, open, close, head, openPositions, closePositions, altern},
+
+    str = StringTrim[s];
+
+    openPositions  = StringPosition[str, "{"];
+    closePositions = StringPosition[str, "}"];
+
+    If[
+        Length[openPositions] =!= 1 || Length[closePositions] =!= 1,
+        Return[False]
+    ];
+    open = openPositions[[1, 1]];
+    close = closePositions[[1, 1]];
+
+    If[
+        open >= close || close =!= StringLength[str],
+        Return[False]
+    ];
+
+    head = StringTrim[StringTake[str, open - 1]];
+    altern = Alternatives["+", "-", "*", "/", "^","(", ")", "[", "]"];
+
+    head =!= "" && StringFreeQ[head, altern]
+]
+
+
+(*
+
+Evaluation tools
+
+    *)
+SetAttributes[EvaluateLeaf, HoldRest];
+SetAttributes[EvaluateDefinitionTree, HoldRest];
+SetAttributes[EvaluateScalarLeaf, HoldRest];
+SetAttributes[EvaluateTensorLeaf, HoldRest];
+
+Clear[EvaluateLeaf];
+
+EvaluateLeaf[leaf_String, bundle_, simp_:PaiSimplify] := If[TensorLeafQ[leaf],
+                                          EvaluateTensorLeaf[leaf, bundle, simp],
+                                              EvaluateScalarLeaf[leaf, bundle, simp]
+   ];
+
+Clear[EvaluateDefinitionTree];
+
+EvaluateDefinitionTree[node_String, bundle_, simp_:PaiSimplify] := EvaluateLeaf[node, bundle, simp];
+
+EvaluateDefinitionTree[<|"plus" -> children_|>, bundle_, simp_:PaiSimplify] := EvaluatePlus[
+           Map[EvaluateDefinitionTree[#, bundle, simp] &, children]
+       ];
+
+EvaluateDefinitionTree[<|"times" -> children_|>, bundle_, simp_:PaiSimplify] := EvaluateTimes[
+           Map[EvaluateDefinitionTree[#, bundle, simp] &, children], simp
+       ];
+
+EvaluateDefinitionTree[<|"divide" -> {num_, den_}|>, bundle_, simp_:PaiSimplify] := EvaluateDivide[
+    EvaluateDefinitionTree[num, bundle, simp], EvaluateDefinitionTree[den, bundle, simp]
+];
+
+EvaluateDivide[num_, den_] := <| "value" -> num["value"]/den["value"], "indices" -> num["indices"] |>;
+
+Clear[EvaluateScalarLeaf];
+
+EvaluateScalarLeaf[leaf_String, bundle_, simp_:PaiSimplify] := Module[
+       {requiredScalars, value},
+       requiredScalars = FindRequiredScalars[{leaf}, bundle];
+       ComputeRequiredTensors[requiredScalars, bundle, simp];
+       value = ToExpression[
+            StringReplace[
+                leaf,
+                "dimInter" -> ToString[Length[bundle["coord"]]]
+            ]
+        ] /. EvalScalarQuantities[$ComputedTensors[bundle["id"]]];
+       <|"value" -> value, "indices" -> {}|>
+];
+
+
+Clear[EvaluateTensorLeaf];
+
+EvaluateTensorLeaf[leaf_String, bundle_, simp_:PaiSimplify] := Module[
+    {tensorSign, value, indices, contractions,
+    freePositions},
+
+    tensorSign = ReadTensorSignature[leaf];
+    indices = TensorIndices[leaf];
+
+    ComputeRequiredTensors[{tensorSign}, bundle, simp];
+
+    value = $ComputedTensors[bundle["id"]][tensorSign];
+
+    contractions = GetContractionsFromIndices[indices];
+
+    If[contractions =!= {},
+        value = TensorProductContract[value, contractions]
+    ];
+
+    freePositions = Complement[Range[Length[indices]], Flatten[contractions]];
+
+    <|"value" -> value, "indices" -> indices[[freePositions]]|>
+];
+
+Clear[GetContractionsFromIndices];
+
+GetContractionsFromIndices[allIndices_List] := Module[
+    {groups, repeated, badMultiplicity, badUpDownPair},
+
+    groups = GatherBy[Range[Length[allIndices]], allIndices[[#, 1]]&];
+
+    badMultiplicity = Select[groups, Length[#] > 2 &];
+
+    If[badMultiplicity =!= {},
+        Print[
+            "[ Aborting ] Index appears more than twice: ",
+            Map[allIndices[[First[#], 1]] &, badMultiplicity]
+        ];
+        Abort[]
+    ];
+
+    repeated = Select[groups, Length[#] == 2 &];
+
+    badUpDownPair = Select[repeated, Length[DeleteDuplicates[allIndices[[#, 2]]]] =!= 2 &];
+
+    If[badUpDownPair =!= {},
+        Print[
+            "[ Aborting ] Contracted indices must appear once up and once down: ",
+            Map[allIndices[[First[#], 1]] &, badUpDownPair]
+        ];
+        Abort[]
+    ];
+
+    repeated
+];
+
+Clear[EvaluateTimes];
+
+EvaluateTimes[children_List, simp_:PaiSimplify] := Module[
+    {scalars, tensors, scalarFactor, tensorValues,
+    allIndices, contractions, freePositions, value},
+
+    scalars = Select[children, #["indices"] === {} &];
+
+    tensors = Select[children, #["indices"] =!= {} &];
+
+    scalarFactor = If[scalars === {},
+                       1, 
+                           Apply[Times, Lookup[scalars, "value"]]
+                   ];
+
+    If[tensors === {},
+        Return[
+            <|"value" -> scalarFactor, "indices" -> {}|>
+        ]
+    ];
+
+    tensorValues = simp[Lookup[tensors, "value"]];
+
+    allIndices = Flatten[Lookup[tensors, "indices"], 1];
+
+    contractions = GetContractionsFromIndices[allIndices];
+
+    value = Apply[TensorProductContract, Append[tensorValues, contractions]] /. TensorProduct[aaI_, bbI_]:>aaI*bbI;
+
+    freePositions = Complement[Range[Length[allIndices]], Flatten[contractions]];
+
+    <|
+        "value" -> scalarFactor value,
+        "indices" -> allIndices[[freePositions]]
+    |>
+];
+
+Clear[AlignEvaluatedIndices];
+
+AlignEvaluatedIndices[term_Association, targetIndices_List] := Module[
+    {indices, value, permutation},
+
+    indices = term["indices"];
+    value = term["value"];
+
+    If[Sort[indices] =!= Sort[targetIndices],
+        Print[
+            "[ Aborting ] Incompatible free indices in sum: ",
+            indices,
+            " and ",
+            targetIndices
+        ];
+        Abort[]
+    ];
+
+    If[targetIndices === {},
+        Return[value]
+    ];
+
+    permutation = Map[
+        First[FirstPosition[targetIndices, #]] &,
+        indices
+    ];
+
+    If[permutation === Range[Length[permutation]],
+        value,
+            Transpose[value, permutation]
+    ]
+];
+
+Clear[EvaluatePlus];
+
+EvaluatePlus[children_List] := Module[
+    {targetIndices, values},
+
+    targetIndices = First[children]["indices"];
+
+    values = Map[
+        AlignEvaluatedIndices[#, targetIndices] &,
+        children
+    ];
+
+    <|
+        "value" -> Apply[Plus, values],
+        "indices" -> targetIndices
+    |>
+];
+
+
+Clear[ComputeFreshTensor];
+SetAttributes[ComputeFreshTensor, HoldRest];
+
+ComputeFreshTensor[defSign_, storage_, bundle_, simp_:PaiSimplify] := Module[
+    {allDef, tensor, def, tree, result,
+    targetIndices, tensorSparse},
+
+    allDef = $DefTensors[storage][defSign];
+
+    tensor = First[Keys[allDef]];
+    def = First[Values[allDef]];
+
+    tree = DecomposeDefinition[def];
+
+    result = EvaluateDefinitionTree[
+        tree,
+        bundle,
+        simp
+    ];
+
+    targetIndices = TensorIndices[tensor];
+
+    tensorSparse = simp[AlignEvaluatedIndices[
+        result,
+        targetIndices
+    ]];
+
+    StoreComputedTensor[bundle, defSign, tensorSparse, simp];
+
+    tensorSparse
+];
+
+
+Clear[TensorSignToString];
+
+TensorSignToString[{head_, indices_, derivatives_}] := Module[
+    {ind, der},
+
+    If[indices==={} && derivatives==={},
+        Return[head]
+    ];
+
+    der = Reverse[derivatives] /. {"up" -> "Dup", "dn" -> "Ddn"};
+
+    head <> "(" <> StringRiffle[Join[der, indices], ","] <> ")"
+];
+
+
+Clear[ParseComputeSpec];
+
+TensorStringToSign[spec_String] := Module[
+    {head, inside, indices, str},
+
+
+    str = StringTrim[spec];
+
+    If[
+        StringFreeQ[str, {"(", ")"}],
+        Return[MakeTensorSign[str, {}, {}]]
+    ];
+
+    head = StringTrim[First[StringSplit[str, "("]]];
+    inside = First[StringCases[str, "(" ~~ x___ ~~ ")" :> x]];
+    indices = StringTrim /@ StringSplit[inside, ","];
+
+    If[
+        Not[AllTrue[indices, MemberQ[{"up", "dn", "vup", "vdn"}, #] &]],
+        Print["[ Aborting ] Invalid tensor indices in ", spec];
+        Abort[]
+    ];
+
+
+    {head, indices, {}}
+];
+
+Block[{Print = (Null &)},
+
+    DefineStringTensor[
+        "shared",
+        "Weyl{a b c d} := R{a b c d} - 1/(dimInter-2)*(g{a c}*R{d b} - g{b c}*R{d a}-g{a d}*R{c b} + g{b d}*R{c a}) + 1/(dimInter-1)/(dimInter-2)*Ricciscalar*(g{a c}*g{d b} - g{a d}*g{c b})"
+    ];
 ];
 
 End[]

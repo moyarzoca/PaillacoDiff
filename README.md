@@ -1,12 +1,23 @@
 # PaillacoDiff
 
+PaillacoDiff is a Wolfram Language package for differential geometry and exterior algebra. It provides a unified set of tools for working with tensors and differential forms. It includes curvature tensors, Hodge duals, contractions, and related geometric operations, with conventions specified in [Conventions](https://moyarzoca.github.io/paillacodiff/#conventions). It also provides a compact interface for defining tensors using an explicit GRTensor-like notation.
 
-
-A Wolfram Mathematica package for differential geometry and exterior algebra.
 
 ## Installation
 
-Put `PaillacoDiff.wl` in the same folder as your `.nb` file and load it with:
+Clone the repository:
+
+```bash
+git clone https://github.com/moyarzoca/PaillacoDiff.git
+```
+
+and load `PaillacoDiff.wl` directly from Mathematica:
+
+```mathematica
+Get["/path/to/PaillacoDiff/PaillacoDiff.wl"];
+```
+
+Alternatively, copy `PaillacoDiff.wl` into the same directory as your notebook and load it with:
 
 ```mathematica
 Get[FileNameJoin[{NotebookDirectory[], "PaillacoDiff.wl"}]];
@@ -14,40 +25,90 @@ Get[FileNameJoin[{NotebookDirectory[], "PaillacoDiff.wl"}]];
 
 ## Two Usage Modes
 
-PaillacoDiff supports two complementary workflows:
+PaillacoDiff supports two complementary ways of working with a geometry.
 
-- **Casual Mode** — set global variables and call functions directly. Best for quick interactive work.
-  → [docs/casual_mode.md](docs/casual_mode.md)
+- **Global Mode** — geometric data such as `ds2` and `coord` are defined globally, and functions are called directly:
 
-- **Bundle Mode** — Association-based with on-demand computation and caching. Best for structured, reproducible computations.
-  → [docs/bundle_mode.md](docs/bundle_mode.md)
+  ```mathematica
+  Hstar[X]
+  FormSquare[X]
+  Paillaco["R(dn,dn)"]
+  ```
 
-## Full Example: Reissner–Nordström
+  This mode is convenient for quick and interactive calculations.
+
+- **Bundle Mode** — the geometric data are stored in a bundle, and the same operations receive the bundle explicitly:
+
+  ```mathematica
+  Hstar[bundle][X]
+  FormSquare[bundle][X]
+  Paillaco[bundle]["R(dn,dn)"]
+  ```
+
+  This mode is convenient when working with several geometries or when a calculation should be self-contained and reproducible.
+
+Whenever an operation does not depend on geometric data, its syntax is identical in both modes, for example:
 
 ```mathematica
-coord = {t, r, \[Theta], \[Phi]};
-Dim = 4;
-f[r_] := 1 - 2 M/r + Q^2/r^2/2;
-ds2 = -f[r] d[t]^2 + d[r]^2/f[r] + r^2 (d[\[Theta]]^2 + Sin[\[Theta]]^2 d[\[Phi]]^2);
+d[X]
+FormDegree[X]
+```
+
+## Example: Reissner–Nordström
+
+Here we combine the differential-form utilities and tensor machinery in a single example to verify the Einstein–Maxwell equations for the Reissner–Nordström solution. We first define the geometry and the electromagnetic field:
+
+```mathematica
+bundle = <|
+    "ds2" -> -f[r]*d[t]^2 + d[r]^2/f[r] 
+             + r^2*(d[theta]^2 + Sin[theta]^2*d[phi]^2),
+    "coord" -> {t, r, theta, phi}
+|>;
 
 d[Q] = d[M] = 0;
-A = Q/r d[t];
+
+A = 2*Q/r*d[t];
 F = d[A];
 
-gdd = DiffToMatrix[ds2];
-gUU = Inverse[gdd];
-sqrtdetg = Sqrt[-Det[gdd]];
+PaiDef[bundle]["F(dn,dn)", F];
 
-ComputeRicciScalar[]
+PaiDef[bundle][
+    "E{a b} := R{a b} - 1/2*g{a b}*Ricciscalar 
+     + 1/2*(F{a c}*F{b ^c} - 1/4*g{a b}*F{c d}*F{^c ^d})"
+];
 
-Print["Maxwell equation d(*F) = 0:"];
-Simplify[d[Hstar[F]]]
-
-Print["Einstein equation R_{mn} - 1/2 g_{mn} R = T_{mn}:"];
-EEdd = Rdd - 1/2 gdd RicciScalar - (FormSquaredd[F] - 1/4 gdd FormSquare[F]);
-Simplify[EEdd]
+PaiCalc[bundle]["E(dn,dn)"];
 ```
+Then, we verify the equations in the solution
+
+```mathematica
+(* Maxwell equation *)
+Simplify[d[Hstar[bundle][F]]]
+
+(* Einstein equation *)
+Simplify[
+    PaiComponents[bundle]["E(dn,dn)"] /. 
+    f -> Function[{r}, 1 - 2*M/r + Q^2/r^2]
+]
+```
+
+## Tests
+
+Run all tests using `wolframscript` from the repository root with
+
+```bash
+wolframscript -file tests/run_tests.wls
+```
+
+Use
+
+```bash
+wolframscript -file tests/run_tests.wls --verbose
+```
+
+to show the full test output.
 
 ## Reference
 
-See [docs/reference.md](docs/reference.md) for a complete function catalog.
+- [Differential forms](https://moyarzoca.github.io/paillacodiff/#differential-forms)
+- [Tensor manipulation](https://moyarzoca.github.io/paillacodiff/#tensor-manipulation)
