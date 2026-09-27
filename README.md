@@ -1,6 +1,6 @@
 # PaillacoDiff
 
-PaillacoDiff is a Wolfram Language package for differential geometry and exterior algebra. It provides a unified set of tools for working with tensors and differential forms. It includes curvature tensors, Hodge duals, contractions, and related geometric operations, with conventions specified in [Conventions](docs/conventions.md). It also provides a compact interface for defining tensors using an explicit GRTensor-like notation.
+PaillacoDiff is a Wolfram Language package for differential geometry and exterior algebra. It provides a unified set of tools for working with tensors and differential forms. It includes curvature tensors, Hodge duals, contractions, and related geometric operations, with conventions specified in [Conventions](https://moyarzoca.github.io/paillacodiff/#conventions). It also provides a compact interface for defining tensors using an explicit GRTensor-like notation.
 
 
 ## Installation
@@ -94,4 +94,5 @@ Simplify[
 
 ## Reference
 
-See [docs/reference.md](docs/reference.md) for a function catalog.
+- [Differential forms](https://moyarzoca.github.io/paillacodiff/#differential-forms)
+- [Tensor manipulation](https://moyarzoca.github.io/paillacodiff/#tensor-manipulation)

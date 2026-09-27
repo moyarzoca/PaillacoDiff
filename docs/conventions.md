@@ -27,14 +27,6 @@ $$
 \right).
 $$
 
-The connection is torsion-free,
-
-$$
-\Gamma^\rho{}_{\mu\nu}
-=
-\Gamma^\rho{}_{\nu\mu}.
-$$
-
 ## Riemann tensor
 
 The Riemann tensor convention is
@@ -51,27 +43,6 @@ R^\rho{}_{\sigma\mu\nu}
 -
 \Gamma^\rho{}_{\nu\lambda}
 \Gamma^\lambda{}_{\sigma\mu}.
-$$
-
-The fully covariant Riemann tensor is
-
-$$
-R_{\rho\sigma\mu\nu}
-=
-g_{\rho\lambda}
-R^\lambda{}_{\sigma\mu\nu}.
-$$
-
-With this convention,
-
-$$
-R_{\rho\sigma\mu\nu}
-=
--R_{\sigma\rho\mu\nu}
-=
--R_{\rho\sigma\nu\mu}
-=
-R_{\mu\nu\rho\sigma}.
 $$
 
 ## Ricci tensor
@@ -113,14 +84,6 @@ g_{\mu\nu}
 =
 \eta_{ab}\,
 e^a{}_\mu e^b{}_\nu,
-$$
-
-or equivalently,
-
-$$
-ds^2
-=
-\eta_{ab}\,e^a e^b.
 $$
 
 The inverse vielbein satisfies

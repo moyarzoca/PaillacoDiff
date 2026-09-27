@@ -1,8 +1,6 @@
-# PaillacoDiff Reference
 
-# Function Reference
 
-## Differential forms
+# Differential forms
 
 ### `FormDegree`
 
@@ -38,7 +36,7 @@ uses the geometry stored in `bundle`.
 
 ---
 
-## Tensor manipulation
+# Tensor manipulation
 
 ### `PaiDef`
 
