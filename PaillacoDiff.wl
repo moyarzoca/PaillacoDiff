@@ -2,88 +2,91 @@
 
 BeginPackage["PaillacoDiff`"]
 
-(* ---------- Public functions ---------- *)
+(* ---------- Differential forms ---------- *)
 
-FormDegree::usage = "FormDegree[expr] returns the degree of a differential form (0 for scalars)."
-Wedge::usage = "Wedge[x, y, ...] is the exterior (wedge) product of forms."
-d::usage = "d[expr] is the exterior derivative."
-PolyFormQ::usage = "PolyFormQ[expr] tests whether expr is a sum of forms of different degrees."
+FormDegree::usage =
+    "FormDegree[expr] returns the degree of a differential form; scalars have degree 0.";
 
-Extractor::usage = "Extractor[F, A] extracts the coefficient of 1-form A in polyform F."
-Extractorleft::usage = "Extractorleft[F, A] extracts A from the left side of each term."
+Wedge::usage =
+    "Wedge[x, y, ...] computes the exterior product of differential forms.";
 
-DNAofForm::usage = "DNAofForm[X] decomposes form X into {{coeff, indices}, ...}."
-SparseFromDNA::usage = "SparseFromDNA[DNA, dim, deg] converts DNA to a SparseArray."
-DNAFromSparse::usage = "DNAFromSparse[sparse] converts a SparseArray back to DNA."
-FormSquare::usage = "FormSquare[bundle][X] / FormSquare[X] computes F_{mu1...mup} F^{mu1...mup}."
-FormSquaredd::usage = "FormSquaredd[bundle][X] / FormSquaredd[X] computes F_{mu l2...lp} F_nu^{ l2...lp}."
-Hstar::usage = "Hstar[bundle][X] / Hstar[X] computes the Hodge dual of form X."
-Contraction::usage = "Contraction[bundle][X] / Contraction[X] computes the contraction operation of X in the basis d[coord] for metric vielbein and bundle[\"basis\"] for vielbein mode."
-FormToSparse::usage = "FormToSparse[X, deg, coord] converts a form to a SparseArray."
-FormToMatrix::usage = "FormToMatrix[X, deg, coord] converts a form X to a dense matrix. deg is an Integer and the degree of the form, and coord are the coordinates."
+d::usage =
+    "d[expr] computes the exterior derivative.";
 
-ClearGeometric::usage = "ClearGeometric[] clears global tensors ChrisUdd, Rdd, RicciScalar."
-DiffToMatrix::usage = "DiffToMatrix[ds2, coord] extracts the metric tensor from a line element."
+PolyFormQ::usage =
+    "PolyFormQ[expr] tests whether expr contains forms of different degrees.";
 
-TensorProductContract::usage = "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts tensor products."
-RaiseIndices::usage = "RaiseIndices[sparse, bundle, positions] raises specified indices."
-LowerIndices::usage = "LowerIndices[sparse, bundle, positions] lower specified indices."
-PaiCovD::usage = "PaiCovD[bundle, tensor, indices] computes the coordinate-basis covariant derivative of tensor. indices is a string of U/d characters describing tensor index variance. For instace for  tensor TUdU indices must be the string UdU. The covariant derivative index is added at the beginning of the tensor"
-GetTensorArray::usage = "GetTensorArray[bundle, name] retrieves a tensor array, computing on demand."
+Extractor::usage =
+    "Extractor[F, A] / Extractor[F, A, side] extracts the coefficient of the 1-form A from F; side is \"right\" by default.";
 
-PaiDef::usage = "PaiDef[\"T{indices}:=expression\"] defines a tensor using GRTensor-like notation.
+(* ---------- Form representations ---------- *)
 
-Tensor indices are written inside braces, with '^' denoting an upper index.
-Covariant derivatives are written after ';'. For example,
+DNAofForm::usage =
+    "DNAofForm[X] / DNAofForm[X, basis] decomposes X into {{coeff, indices}, ...}.";
 
-    PaiDef[\"H{a b}:=18*R{a ^c}*R{b c}*Ricciscalar\"]
+SparseFromDNA::usage =
+    "SparseFromDNA[DNA, dim, deg] converts a DNA representation to a SparseArray.";
 
-defines H_ab, while
+DNAFromSparse::usage =
+    "DNAFromSparse[sparse] converts a SparseArray to a DNA representation.";
 
-    R{a b ;^c ;c}
+FormToSparse::usage =
+    "FormToSparse[X] / FormToSparse[X, deg] / FormToSparse[X, deg, coord] converts X to a SparseArray.";
 
-denotes a covariantly differentiated Ricci tensor.
+FormToMatrix::usage =
+    "FormToMatrix[X] / FormToMatrix[X, deg] / FormToMatrix[X, deg, coord] converts X to a dense array.";
 
-PaiDef stores the definition symbolically and does not compute tensor components.
-The current implementation supports monomial tensor expressions without
-parenthesized sums.";
+(* ---------- Form operations ---------- *)
 
+FormSquare::usage =
+    "FormSquare[X] / FormSquare[bundle][X] computes F_{mu1...mup} F^{mu1...mup}.";
 
-PaiCalc::usage = "PaiCalc[bundle][\"T(indices)\"] computes the tensor in bundle."
+FormSquaredd::usage =
+    "FormSquaredd[X] / FormSquaredd[bundle][X] computes F_{mu r1...r(p-1)} F_nu^{r1...r(p-1)}.";
 
-PaiComponents::usage = "PaiComponents[bundle][\"T(indices)\"] returns the components of the tensor previously computed."
-PaiCompute::usage =
-"PaiCompute[bundle][\"T(indices)\"] computes the components of a tensor
-previously defined with PaiDef.
-The string \"indices\" specifies the requested index positions using
-'dn' for lower indices and 'up' for upper indices. For example,
-            PaiCompute[bundle][\"H(dn,dn)\"]"
+Hstar::usage =
+    "Hstar[X] / Hstar[bundle][X] computes the Hodge dual of X.";
+
+Contraction::usage =
+    "Contraction[X] / Contraction[bundle][X] computes contractions of X in the corresponding differential-form basis.";
+
+(* ---------- Tensor utilities ---------- *)
+
+DiffToMatrix::usage =
+    "DiffToMatrix[ds2] / DiffToMatrix[ds2, coord] extracts the metric array from a line element.";
+
+TensorProductContract::usage =
+    "TensorProductContract[t1, t2, ..., {{i1,j1}, ...}] contracts specified pairs of tensor-product indices.";
+
+PaiSimplify::usage =
+    "PaiSimplify[expr] applies PaillacoDiff's default lightweight algebraic simplification.";
+
+(* ---------- Tensor manipulation ---------- *)
+
+PaiDef::usage =
+    "PaiDef[\"T{indices} := expression\"] / PaiDef[bundle][\"T{indices} := expression\"] defines a symbolic tensor; PaiDef[\"T(indices)\", object] / PaiDef[bundle][\"T(indices)\", object] defines a tensor from an explicit object.";
+
+PaiCalc::usage =
+    "PaiCalc[\"T(indices)\"] / PaiCalc[bundle][\"T(indices)\"] computes the requested tensor.";
+
+PaiComponents::usage =
+    "PaiComponents[\"T(indices)\"] / PaiComponents[bundle][\"T(indices)\"] returns a previously computed tensor as an array.";
+
 Paillaco::usage =
-"Paillaco[bundle][\"T(indices)\"] computes a tensor if necessary and returns its components.";
+    "Paillaco[\"T(indices)\"] / Paillaco[bundle][\"T(indices)\"] computes the requested tensor if necessary and returns its components.";
 
 (* ---------- Public globals ---------- *)
 
-PaiNonCommutativeScalarQ::usage = "PaiNonCommutativeScalarQ[expr] tests whether expr contains a registered noncommutative scalar coefficient.";
-PaiRegisterNonCommutativeScalarQ::usage = "PaiRegisterNonCommutativeScalarQ[test] registers a predicate test[expr] used by Wedge to detect noncommutative scalar coefficients.";
+coord::usage =
+    "coord is the list of coordinates used in global mode.";
 
-PaiSimplify::usage = "PaiSimplify[expr] applies PaillacoDiff's default lightweight algebraic simplification.";
-$UsePaiSimplify::usage = "$UsePaiSimplify controls whether PaiSimplify applies automatic simplification. Default is True.";
+ds2::usage =
+    "ds2 is the line element expressed in the coordinate basis d[x].";
 
-coord::usage = "List of coordinate variables."
-Dim::usage = "Spacetime dimension."
-ds2::usage = "Metric ds2 expresed in the coordinate basis d[xmu]*d[xnu]"
-gdd::usage = "Metric tensor g_{mu nu}."
-gUU::usage = "Inverse metric g^{mu nu}."
-ChrisUdd::usage = "Christoffel symbols Gamma^mu_{nu rho}."
-Rdddd::usage = "Riemann tensor R_{mu nu rho sigma}."
-Rdd::usage = "Ricci tensor R_{mu nu}."
-RicciScalar::usage = "Ricci scalar R."
-sqrtdetg::usage = "Sqrt[-det(g)]."
+(* ---------- Configuration ---------- *)
 
-eTodx::usage = "Rule mapping e^a to e^a_mu dx^mu."
-dxToe::usage = "Rule mapping dx^mu to e^a."
-eamuUd::usage = "Vielbein matrix e^a_mu."
-eamudU::usage = "Inverse vielbein matrix e_a^mu."
+$UsePaiSimplify::usage =
+    "$UsePaiSimplify controls automatic use of PaiSimplify; the default is True.";
 
 Begin["`Private`"]
 
@@ -3065,11 +3068,13 @@ TensorStringToSign[spec_String] := Module[
     {head, indices, {}}
 ];
 
-DefineStringTensor[
-    "shared",
-    "Weyl{a b c d} := R{a b c d} - 1/(dimInter-2)*(g{a c}*R{d b} - g{b c}*R{d a}-g{a d}*R{c b} + g{b d}*R{c a}) + 1/(dimInter-1)/(dimInter-2)*Ricciscalar*(g{a c}*g{d b} - g{a d}*g{c b})"
-];
+Block[{Print = (Null &)},
 
+    DefineStringTensor[
+        "shared",
+        "Weyl{a b c d} := R{a b c d} - 1/(dimInter-2)*(g{a c}*R{d b} - g{b c}*R{d a}-g{a d}*R{c b} + g{b d}*R{c a}) + 1/(dimInter-1)/(dimInter-2)*Ricciscalar*(g{a c}*g{d b} - g{a d}*g{c b})"
+    ];
+];
 
 End[]
 
