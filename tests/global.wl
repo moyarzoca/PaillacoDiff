@@ -5,7 +5,7 @@ globalTests = {
             ds2=-f[r]*d[t]^2 + d[r]^2/f[r] + r^2*(d[theta]^2 + Sin[theta]^2*d[phi]^2);
             coord = {t,r,theta,phi};
 
-            PaiCompute["R(dn,dn)", Simplify];
+            PaiCalc["R(dn,dn)", Simplify];
             Simplify[Simplify[PaiComponents["R(dn,dn)"]] /. f->Function[{r}, 1-2*M/r]]
         ],
         ConstantArray[0, {4, 4}],
@@ -18,7 +18,7 @@ globalTests = {
             coord = {t,r,theta,phi};
             PaiDef["G{a b} := R{a b} -1/2*g{a b}*Ricciscalar"];
             PaiDef["div{a} := G{a b ;^b}"];
-            PaiCompute["div(dn)"];
+            PaiCalc["div(dn)"];
             PaiComponents["div(dn)"]//Simplify
         ],
         ConstantArray[0, {4}],
@@ -29,7 +29,7 @@ globalTests = {
         Module[{},
             ds2=-f[r]*d[t]^2 + d[r]^2/f[r] + r^2*(d[theta]^2 + Sin[theta]^2*d[phi]^2);
             coord = {t,r,theta,phi};
-            PaiCompute["R(dn,dn)"];
+            PaiCalc["R(dn,dn)"];
 
             ds2 = -d[t]^2 + d[r]^2 + r^2*(d[theta]^2 + Sin[theta]^2*d[phi]^2);
             coord = {t,r,theta,phi};

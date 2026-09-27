@@ -18,7 +18,7 @@ VerificationTest[
 
         PaiDef[bund]["TfromF{a b} := F{a c}*F{b ^c} - 1/4*g{a b}*F{c d}*F{^c ^d}"];
         PaiDef[bund]["MustBeZero{a b} := TfromF{a b} - TfromFromSquare{a b}"];
-        PaiCompute[bund]["MustBeZero(dn,dn)"];
+        PaiCalc[bund]["MustBeZero(dn,dn)"];
         Simplify[PaiComponents[bund]["MustBeZero(dn,dn)"]]
     ],
     ConstantArray[0, {4, 4}],
@@ -34,7 +34,7 @@ VerificationTest[
         PaiDef[bund]["F(dn,dn)", F];
         PaiDef[bund]["T{a b} := F{a c}*F{b ^c} - 1/4*g{a b}*F{c d}*F{^c ^d}"];
         PaiDef[bund]["E{a b} := R{a b}-1/2*g{a b}*Ricciscalar -1/2*T{a b}"];
-        PaiCompute[bund]["E(dn,dn)"];
+        PaiCalc[bund]["E(dn,dn)"];
         Simplify[PaiComponents[bund]["E(dn, dn)"]
             /.f->Function[{r}, 1 - 2*m/r + Q^2/r^2/4]
             /. p->Function[{r}, Q/r]
@@ -56,7 +56,7 @@ VerificationTest[
 
         PaiDef[bund]["xi(up)", xi];
         PaiDef[bund]["KE{a b} := xi{a ;b} + xi{b ;a}"];
-        PaiCompute[bund]["KE(dn, dn)"];
+        PaiCalc[bund]["KE(dn, dn)"];
 
         Simplify[PaiComponents[bund]["KE(dn, dn)"]]
     ],
@@ -68,9 +68,9 @@ VerificationTest[
     Module[{bundV, omegaDD, omegaUD, gUU},
         bundV = MakeSparseTestBundleVielbein5[];
 
-        PaiCompute[bundV]["omega(dn,dn)"];
-        PaiCompute[bundV]["omega(up,dn)"];
-        PaiCompute[bundV]["g(up,up)"];
+        PaiCalc[bundV]["omega(dn,dn)"];
+        PaiCalc[bundV]["omega(up,dn)"];
+        PaiCalc[bundV]["g(up,up)"];
 
         omegaDD = PaiComponents[bundV]["omega(dn,dn)"];
         omegaUD = PaiComponents[bundV]["omega(up,dn)"];
@@ -87,7 +87,7 @@ VerificationTest[
     Module[{bundV, xivdn},
         bundV = MakeSparseTestBundleVielbein5[];
         PaiDef[bundV]["xi(up)", {1,0,0,0,0}];
-        PaiCompute[bundV]["xi(vdn)"];
+        PaiCalc[bundV]["xi(vdn)"];
         xivdn = PaiComponents[bundV]["xi(vdn)"];
         PaiDef[bundV]["zi(vdn)", xivdn];
         Paillaco[bundV]["zi(up)"]
@@ -100,7 +100,7 @@ VerificationTest[
 VerificationTest[
     Module[{bundV2},
         bundV2 = MakeVielbeinBundleAdS5[];
-        PaiCompute[bundV2]["Rform(vup, vup)"];
+        PaiCalc[bundV2]["Rform(vup, vup)"];
         Simplify[ PaiComponents[bundV2]["Rform(vup,vup)"] + Table[Z[a]\[Wedge]Z[b], {a, 5}, {b, 5}]]
     ],
     ConstantArray[0, {5, 5}],
@@ -125,7 +125,7 @@ VerificationTest[
             "Bianchi{a b c d} := R{a b c d} + R{a c d b} + R{a d b c}"
         ];
 
-        PaiCompute[bund]["Bianchi(dn,dn,dn,dn)"];
+        PaiCalc[bund]["Bianchi(dn,dn,dn,dn)"];
 
         Simplify[
             PaiComponents[bund]["Bianchi(dn,dn,dn,dn)"]
@@ -154,7 +154,7 @@ VerificationTest[
             ) - 1/2*g{a b}*GB"
         ];
 
-        PaiCompute[bund]["HGB(dn,dn)"];
+        PaiCalc[bund]["HGB(dn,dn)"];
 
         Simplify[
             PaiComponents[bund]["HGB(dn,dn)"]

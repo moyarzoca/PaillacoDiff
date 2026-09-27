@@ -83,8 +83,8 @@ definitions = {
 
         PartialContract[Xdd - 2*Ydd, Xdd + Ydd] - 1/4*gddTest*Contract2[Xdd, Xdd]
 Map[PaiDef[#]&, definitions];
-PaiCompute[bund]["g(dn,dn)"];
-PaiCompute[bund]["g(up,up)"];
+PaiCalc[bund]["g(dn,dn)"];
+PaiCalc[bund]["g(up,up)"];
 gddTest = PaiComponents[bund]["g(dn,dn)"];
 
 gUUTest = PaiComponents[bund]["g(up,up)"];
@@ -153,7 +153,7 @@ tests = KeyValueMap[
         VerificationTest[
             Module[{},
 
-                PaiCompute[bund][spec];
+                PaiCalc[bund][spec];
                 Expand[Factor[Normal[PaiComponents[bund][spec]]]]
 
             ],
