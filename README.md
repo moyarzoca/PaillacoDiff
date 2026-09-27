@@ -32,7 +32,7 @@ PaillacoDiff supports two complementary ways of working with a geometry.
   ```mathematica
   Hstar[X]
   FormSquare[X]
-  Paillaco["R(dn,dn)"]
+  PaiCalcd["R(dn,dn)"]
   ```
 
   This mode is convenient for quick and interactive calculations.
@@ -42,7 +42,7 @@ PaillacoDiff supports two complementary ways of working with a geometry.
   ```mathematica
   Hstar[bundle][X]
   FormSquare[bundle][X]
-  Paillaco[bundle]["R(dn,dn)"]
+  PaiCalcd[bundle]["R(dn,dn)"]
   ```
 
   This mode is convenient when working with several geometries or when a calculation should be self-contained and reproducible.
