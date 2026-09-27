@@ -92,6 +92,22 @@ Simplify[
 ]
 ```
 
+## Tests
+
+Run all tests using `wolframscript` from the repository root with
+
+```bash
+wolframscript -file tests/run_tests.wls
+```
+
+Use
+
+```bash
+wolframscript -file tests/run_tests.wls --verbose
+```
+
+to show the full test output.
+
 ## Reference
 
 - [Differential forms](https://moyarzoca.github.io/paillacodiff/#differential-forms)
